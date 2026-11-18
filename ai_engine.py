@@ -11,8 +11,8 @@ GEMINI_API_KEY = "방금_복사한_실제_API키_입력"
 # 최신 SDK 클라이언트 초기화
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# 가장 빠르고 안정적인 최신 무료 모델
-MODEL_NAME = "gemini-2.5-flash"
+# 💡 구글 서버가 요구하는 최신 지원 모델명으로 변경
+MODEL_NAME = "gemini-2.0-flash"
 
 # 🦊 GitLab 연동 설정
 GITLAB_PROJECT_ID = "hbin0604-sudo%2FAI_Dashbord"
