@@ -1,14 +1,13 @@
 import base64
 import json
 from datetime import datetime
-from groq import Groq
 import requests
 
-# 🌐 Groq 무료 클라우드 API 설정 (초고속 무료 LLM)
+# 🌐 Groq 무료 클라우드 API 설정 (REST 직통 방식)
 GROQ_API_KEY = "Gsk_v9aQPjsahM76RVf0xku6WGdyb3FYRrga2xMv1IsLpnALtPypcm3V"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-client = Groq(api_key=GROQ_API_KEY)
-# 가장 속도가 빠르고 성능이 뛰어난 최신 무료 모델
+# 가장 속도가 빠르고 안정적인 최신 무료 모델
 MODEL_NAME = "llama-3.3-70b-versatile"
 
 # 🦊 GitLab 연동 설정
@@ -16,25 +15,43 @@ GITLAB_PROJECT_ID = "hbin0604-sudo%2FAI_Dashbord"
 GITLAB_TOKEN = "glpat-T3gHK_Vziu5qRtPgRXHd62M6MQpvOjEKdTpxajM4bw8.01.171lz2q2c"
 
 def ask_ai_bot(user_prompt):
-    """ Groq 클라우드 API를 통한 초고속 인프라 참모 질의응답 """
+    """ Groq REST API를 직접 호출하여 인증 오류와 라이브러리 충돌을 원천 차단하는 참모 함수 """
     if not GROQ_API_KEY:
         return "⚠️ Groq API 키가 입력되지 않았습니다."
     
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": MODEL_NAME,
+        "messages": [
+            {
+                "role": "system",
+                "content": "너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘."
+            },
+            {
+                "role": "user",
+                "content": user_prompt
+            }
+        ],
+        "temperature": 0.3
+    }
+    
     try:
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "system",
-                    "content": "너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘."
-                },
-                {
-                    "role": "user",
-                    "content": user_prompt,
-                }
-            ],
-            model=MODEL_NAME,
-        )
-        return chat_completion.choices[0].message.content
+        response = requests.post(GROQ_URL, json=payload, headers=headers, timeout=20)
+        res_data = response.json()
+        
+        # API 거부 에러 체크
+        if "error" in res_data:
+            err_msg = res_data["error"].get("message", "알 수 없는 API 에러")
+            return f"⚠️ Groq 인증/요청 거부됨: {err_msg}"
+            
+        # 응답 텍스트 추출
+        answer_text = res_data["choices"][0]["message"]["content"]
+        return answer_text
+        
     except Exception as e:
         return f"⚠️ Groq API 통신 오류: {e}"
 
