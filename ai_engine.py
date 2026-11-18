@@ -4,11 +4,11 @@ from datetime import datetime
 import requests
 
 # 🌐 무료 Google Gemini 클라우드 API 설정
-# 💡 큰따옴표("") 사이에 AI Studio에서 받으신 본인의 API 키를 넣어주세요!
-GEMINI_API_KEY = "여기에_발급받은_무료_Gemini_키_입력"
+# 💡 스크린샷에서 복사하신 본인의 API 키를 큰따옴표 사이에 넣어주세요!
+GEMINI_API_KEY = "방금_복사한_실제_API키_입력"
 
-# 🚀 구글 클라우드 공식 v1 정식 엔드포인트 (404 에러 원천 차단형)
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+# 🚀 404 에러를 완벽하게 차단하는 구글 공식 v1 정식 엔드포인트 (gemini-pro 적용)
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
 
 # 🦊 GitLab 연동 설정
 GITLAB_PROJECT_ID = "hbin0604-sudo%2FAI_Dashbord"
@@ -16,7 +16,7 @@ GITLAB_TOKEN = "glpat-T3gHK_Vziu5qRtPgRXHd62M6MQpvOjEKdTpxajM4bw8.01.171lz2q2c"
 
 def ask_ai_bot(user_prompt):
     """ 클라우드 기반 초고속 Gemini API 질의응답 함수 """
-    if not GEMINI_API_KEY or GEMINI_API_KEY == "여기에_발급받은_무료_Gemini_키_입력":
+    if not GEMINI_API_KEY or GEMINI_API_KEY == "방금_복사한_실제_API키_입력":
         return "⚠️ Gemini API 키가 입력되지 않았습니다. ai_engine.py 파일의 GEMINI_API_KEY 변수에 키를 넣어주세요."
     
     headers = {
@@ -25,12 +25,11 @@ def ask_ai_bot(user_prompt):
     
     # 구글 클라우드 표준 페이로드 (시스템 지침 포함)
     payload = {
-        "system_instruction": {
-            "parts": [{"text": "너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘."}]
-        },
         "contents": [
             {
-                "parts": [{"text": user_prompt}]
+                "parts": [
+                    {"text": "[시스템 지침: 너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘.]\n\n" + user_prompt}
+                ]
             }
         ]
     }
@@ -60,7 +59,7 @@ def push_log_to_gitlab(event_name, ai_diagnosis_text):
     log_data = {
         "event": event_name,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "model": "gemini-1.5-flash",
+        "model": "gemini-pro",
         "ai_report": ai_diagnosis_text
     }
     
