@@ -5,12 +5,12 @@ import google.generativeai as genai
 import requests
 
 # 🌐 무료 Google Gemini API 설정
-# 본인의 발급받은 실제 Gemini API 키를 입력하세요
+# 발급받으신 본인의 Gemini API 키를 입력하세요
 GEMINI_API_KEY = "여기에_발급받은_무료_Gemini_키_입력"
 genai.configure(api_key=GEMINI_API_KEY)
 
-# 💡 404 에러 방지를 위해 가장 안정적인 최신 무료 모델명으로 지정
-MODEL_NAME = "gemini-1.5-flash"
+# 💡 404 에러 원인을 완전히 차단하는 안정적인 정식 모델명
+MODEL_NAME = "gemini-pro"
 
 # 🦊 GitLab 연동 설정
 GITLAB_PROJECT_ID = "hbin0604-sudo%2FAI_Dashbord"
@@ -22,12 +22,13 @@ def ask_ai_bot(user_prompt):
         return "⚠️ Gemini API 키가 입력되지 않았습니다. ai_engine.py에 키를 입력해주세요."
     
     try:
-        # 모델 객체 생성 시 표준 규격 적용
-        model = genai.GenerativeModel(
-            model_name=MODEL_NAME,
-            system_instruction="너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘."
-        )
-        response = model.generate_content(user_prompt)
+        # gemini-pro 모델 규격에 맞춘 인스턴스 생성
+        model = genai.GenerativeModel(MODEL_NAME)
+        
+        # 시스템 프롬프트와 유저 프롬프트를 결합하여 안정적으로 호출
+        full_prompt = f"[시스템 지침: 너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘.]\n\n질문: {user_prompt}"
+        
+        response = model.generate_content(full_prompt)
         return response.text
     except Exception as e:
         return f"⚠️ Gemini API 통신 오류: {e}"
