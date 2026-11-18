@@ -7,8 +7,8 @@ import requests
 GROQ_API_KEY = "Gsk_v9aQPjsahM76RVf0xku6WGdyb3FYRrga2xMv1IsLpnALtPypcm3V"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# 가장 속도가 빠르고 안정적인 최신 무료 모델
-MODEL_NAME = "llama-3.3-70b-versatile"
+# 💡 확실하게 권한이 열려 있는 Groq 표준 정식 모델명으로 교체
+MODEL_NAME = "llama3-70b-8192"
 
 # 🦊 GitLab 연동 설정
 GITLAB_PROJECT_ID = "hbin0604-sudo%2FAI_Dashbord"
