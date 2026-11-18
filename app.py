@@ -20,31 +20,41 @@ if "chat_history" not in st.session_state:
 if "selected_log_category" not in st.session_state:
     st.session_state.selected_log_category = None
 
-# 📌 [핵심 보정] 어떤 메뉴를 가더라도 브라우저 우측 하단에 둥둥 떠 있도록 완벽 고정하는 CSS
+# 📌 [결정적 해결] Streamlit Popover를 완벽한 우측 하단 동그란 노란색 원형 버튼으로 고정하는 CSS
 st.markdown("""
 <style>
-/* Streamlit Popover 전체를 브라우저 뷰포트 우측 하단에 절대 고정 */
-[data-testid="stPopover"] {
+/* 1. 화면 전체를 기준으로 우측 하단(30px, 30px)에 절대 고정 */
+div[data-testid="stPopover"] {
     position: fixed !important;
     bottom: 30px !important;
     right: 30px !important;
-    z-index: 9999999 !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: 99999999 !important;
+    width: auto !important;
+    max-width: none !important;
 }
 
-/* 버튼을 예쁜 동그란 노란색 원형 버튼으로 고정 ("AI 챗봇" 텍스트 포함) */
-[data-testid="stPopover"] > button {
-    width: 65px !important;
-    height: 65px !important;
-    min-width: 65px !important;
-    min-height: 65px !important;
-    max-width: 65px !important;
-    max-height: 65px !important;
+div[data-testid="stPopover"] > div {
+    width: auto !important;
+    max-width: none !important;
+}
+
+/* 2. 바 형태를 강제로 부수고 완벽한 동그란 노란색 버튼으로 성형 */
+div[data-testid="stPopover"] > button,
+div[data-testid="stPopover"] button {
+    width: 70px !important;
+    height: 70px !important;
+    min-width: 70px !important;
+    min-height: 70px !important;
+    max-width: 70px !important;
+    max-height: 70px !important;
     border-radius: 50% !important;
     background-color: #FFD54F !important;
     color: #333333 !important;
     font-weight: bold !important;
     font-size: 13px !important;
-    box-shadow: 0px 8px 25px rgba(0,0,0,0.45) !important;
+    box-shadow: 0px 8px 25px rgba(0,0,0,0.5) !important;
     border: 3px solid #FFC107 !important;
     display: flex !important;
     align-items: center !important;
@@ -53,16 +63,17 @@ st.markdown("""
     text-align: center !important;
     white-space: pre-wrap !important;
     line-height: 1.2 !important;
+    flex: none !important;
 }
 
-[data-testid="stPopover"] > button:hover {
+div[data-testid="stPopover"] > button:hover {
     background-color: #FFC107 !important;
     transform: scale(1.08);
 }
 </style>
 """, unsafe_allow_html=True)
 
-# 📌 사이드바 네비게이션 메뉴 (요청하신 3개 메뉴 고정)
+# 📌 사이드바 네비게이션 메뉴 (3개 메뉴 고정)
 st.sidebar.header("🧭 관세청 AIOps 메뉴")
 menu = st.sidebar.radio(
     "이동할 메뉴를 선택하세요:",
@@ -175,27 +186,4 @@ elif menu == "관세행정 서비스 품질":
 
 
 # ==========================================
-# 🤖 우측 하단 동그란 노란색 "AI 챗봇" 플로팅 버튼 팝업 (모든 화면 공통 전역 배치)
-# ==========================================
-with st.popover("AI\n챗봇"):
-    st.markdown("### 💬 Local qwen2.5:3b 챗봇")
-    st.caption("어디서나 호출 가능한 실시간 인프라 참모")
-    
-    floating_chat_box = st.container(height=260)
-    with floating_chat_box:
-        if not st.session_state.chat_history:
-            st.info("궁금한 점을 바로 물어보세요!")
-        for role, msg in st.session_state.chat_history:
-            if role == "user":
-                st.markdown(f"**나:** {msg}")
-            else:
-                st.markdown(f"**AI:** {msg}")
-
-    float_input = st.text_input("빠른 질문 입력...", key="floating_bot_input")
-    if st.button("보내기", key="floating_bot_send"):
-        if float_input:
-            st.session_state.chat_history.append(("user", float_input))
-            with st.spinner("생성 중..."):
-                reply = ask_ai_bot(float_input)
-                st.session_state.chat_history.append(("assistant", reply))
-            st.rerun()
+# 🤖 우측 하단 동그란 노란색 "AI 챗봇" 플로팅 버튼 팝업 (모든 화면
