@@ -5,23 +5,24 @@ import google.generativeai as genai
 import requests
 
 # 🌐 무료 Google Gemini API 설정
-# 1. https://aistudio.google.com/ 접속 후 무료 API 키를 발급받아 아래에 넣어주세요.
+# 본인의 발급받은 실제 Gemini API 키를 입력하세요
 GEMINI_API_KEY = "여기에_발급받은_무료_Gemini_키_입력"
 genai.configure(api_key=GEMINI_API_KEY)
 
-# 속도가 매우 빠르고 무료 할당량이 넉넉한 모델
+# 💡 404 에러 방지를 위해 가장 안정적인 최신 무료 모델명으로 지정
 MODEL_NAME = "gemini-1.5-flash"
 
-# 🦊 GitLab 연동 설정 (사용자님의 GitLab 정보 반영 완료)
+# 🦊 GitLab 연동 설정
 GITLAB_PROJECT_ID = "hbin0604-sudo%2FAI_Dashbord"
 GITLAB_TOKEN = "glpat-T3gHK_Vziu5qRtPgRXHd62M6MQpvOjEKdTpxajM4bw8.01.171lz2q2c"
 
 def ask_ai_bot(user_prompt):
     """ Google Gemini 무료 API를 통한 초고속 인프라 참모 질의응답 """
     if not GEMINI_API_KEY or GEMINI_API_KEY == "여기에_발급받은_무료_Gemini_키_입력":
-        return "⚠️ Gemini API 키가 입력되지 않았습니다. https://aistudio.google.com/ 에서 무료 키를 발급받아 ai_engine.py에 입력해주세요."
+        return "⚠️ Gemini API 키가 입력되지 않았습니다. ai_engine.py에 키를 입력해주세요."
     
     try:
+        # 모델 객체 생성 시 표준 규격 적용
         model = genai.GenerativeModel(
             model_name=MODEL_NAME,
             system_instruction="너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘."
