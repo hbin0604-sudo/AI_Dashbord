@@ -1,43 +1,35 @@
-import requests
 import base64
 import json
 from datetime import datetime
+import google.generativeai as genai
+import requests
 
-# 🌐 클라우드 AI (OpenAI GPT-4o-mini) 설정
-CLOUD_AI_URL = "https://api.openai.com/v1/chat/completions"
-CLOUD_AI_KEY = "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"
-MODEL_NAME = "gpt-4o-mini"
+# 🌐 무료 Google Gemini API 설정
+# 1. https://aistudio.google.com/ 접속 후 무료 API 키를 발급받아 아래에 넣어주세요.
+GEMINI_API_KEY = "여기에_발급받은_무료_Gemini_키_입력"
+genai.configure(api_key=GEMINI_API_KEY)
 
-# 🦊 GitLab 연동 설정
+# 속도가 매우 빠르고 무료 할당량이 넉넉한 모델
+MODEL_NAME = "gemini-1.5-flash"
+
+# 🦊 GitLab 연동 설정 (사용자님의 GitLab 정보 반영 완료)
 GITLAB_PROJECT_ID = "hbin0604-sudo%2FAI_Dashbord"
 GITLAB_TOKEN = "glpat-T3gHK_Vziu5qRtPgRXHd62M6MQpvOjEKdTpxajM4bw8.01.171lz2q2c"
 
 def ask_ai_bot(user_prompt):
-    """ 인터넷망을 통한 초고속 클라우드 AI 질의응답 (상세 에러 처리 포함) """
-    headers = {
-        "Authorization": f"Bearer {CLOUD_AI_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": MODEL_NAME,
-        "messages": [
-            {"role": "system", "content": "너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘."},
-            {"role": "user", "content": user_prompt}
-        ],
-        "temperature": 0.3
-    }
+    """ Google Gemini 무료 API를 통한 초고속 인프라 참모 질의응답 """
+    if not GEMINI_API_KEY or GEMINI_API_KEY == "여기에_발급받은_무료_Gemini_키_입력":
+        return "⚠️ Gemini API 키가 입력되지 않았습니다. https://aistudio.google.com/ 에서 무료 키를 발급받아 ai_engine.py에 입력해주세요."
+    
     try:
-        response = requests.post(CLOUD_AI_URL, json=payload, headers=headers, timeout=15)
-        res_data = response.json()
-        
-        # 💡 OpenAI가 에러 응답을 보낸 경우, 그 원인 메시지를 정확히 추출해서 리턴
-        if "error" in res_data:
-            err_detail = res_data["error"].get("message", "알 수 없는 에러")
-            return f"⚠️ OpenAI API 거부됨: {err_detail}"
-            
-        return res_data["choices"][0]["message"]["content"]
+        model = genai.GenerativeModel(
+            model_name=MODEL_NAME,
+            system_instruction="너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘."
+        )
+        response = model.generate_content(user_prompt)
+        return response.text
     except Exception as e:
-        return f"⚠️ 클라우드 AI API 통신 오류: {e}"
+        return f"⚠️ Gemini API 통신 오류: {e}"
 
 def push_log_to_gitlab(event_name, ai_diagnosis_text):
     """ AI가 탐지한 침해사고 로그를 GitLab Repository에 자동 커밋하는 함수 """
@@ -76,4 +68,5 @@ def push_log_to_gitlab(event_name, ai_diagnosis_text):
     except Exception as e:
         return f"⚠️ GitLab API 통신 오류: {e}"
 
+# 하위 호환을 위한 별칭
 push_log_to_github = push_log_to_gitlab
