@@ -22,14 +22,13 @@ if "selected_log_category" not in st.session_state:
 if "detected_incident" not in st.session_state:
     st.session_state.detected_incident = None
 
-# 실시간 탐지 대상인 최근 로그 목록을 세션에 유지 (실제 시스템의 로그 수집 버퍼 역할)
 if "live_logs" not in st.session_state:
     st.session_state.live_logs = [
         {"time": "03:10:12", "ip": "124.105.21.9", "method": "GET", "url": "/index.do", "status": 200},
         {"time": "03:10:15", "ip": "124.105.21.9", "method": "POST", "url": "/customs/search.do", "status": 200},
     ]
 
-# 📌 우측 하단 동그란 노란색 원형 버튼 고정 CSS 스타일링
+# 📌 우측 하단 동그란 노란색 "AI 챗봇" 플로팅 버튼 고정 CSS
 st.markdown("""
 <style>
 div[data-testid="stPopover"] {
@@ -80,94 +79,66 @@ div[data-testid="stPopover"] > button:hover {
 </style>
 """, unsafe_allow_html=True)
 
-# 📌 사이드바 네비게이션 메뉴 (3개 메뉴 고정)
+# 📌 사이드바 네비게이션 메뉴 (관제 로그 메뉴 분리 추가)
 st.sidebar.header("🧭 관세청 AIOps 메뉴")
 menu = st.sidebar.radio(
     "이동할 메뉴를 선택하세요:",
     [
         "통합 모니터링 대시보드", 
         "인프라 자원", 
-        "관세행정 서비스 품질"
+        "관세행정 서비스 품질",
+        "실시간 로그 스트림 및 관제"
     ]
 )
 
 st.sidebar.markdown("---")
-st.sidebar.success("🟢 폐쇄망(On-Premise) 모드")
-st.sidebar.info("🤖 Local LLM: qwen2.5:3b (Ollama)")
+st.sidebar.success("🟢 하이브리드(Cloud AI) 모드")
+st.sidebar.info("🤖 Cloud LLM: GPT-4o-mini")
 
 # ==========================================
-# 🔍 [백그라운드 엔진] 로그 스캐너 및 침해사고 자동 감지 로직
+# 🔍 [백그라운드 엔진] 로그 스캐너 및 침해사고 자동 감지
 # ==========================================
 def scan_logs_for_threats():
     for log in st.session_state.live_logs:
         url_str = str(log.get("url", ""))
-        # 로그 문자열에 /etc/passwd 탈취 시도 패턴이 포함되어 있는지 검사
         if "/etc/passwd" in url_str or "passwd" in url_str:
             return log
     return None
 
-# 주기적 스캔 수행
 current_threat = scan_logs_for_threats()
 if current_threat and not st.session_state.detected_incident:
     st.session_state.detected_incident = current_threat
 
+# 공통 침해사고 자동 감지 팝업 (어떤 화면에 있든 발동)
+if st.session_state.detected_incident:
+    @st.dialog("🚨 [CRITICAL] 시스템 무단 접근(침해사고) 자동 탐지됨", width="large")
+    def show_auto_incident_dialog(threat):
+        st.error(f"⚠️ **실시간 로그 스트림 분석 중 중요 침해 패턴이 감지되었습니다!**\n\n- **탐지 시간:** {threat['time']}\n- **공격자 IP:** {threat['ip']}\n- **대상 경로:** `{threat['url']}`")
+        
+        with st.spinner("🚀 클라우드 AI가 실시간으로 침해 로그를 분석하고 방어 가이드를 생성 중입니다..."):
+            prompt = f"보안 침해 사고 감지: 공격자 IP {threat['ip']}가 다음 경로로 시스템 파일에 접근했습니다: {threat['url']}. 1) 공격 위협도 평가, 2) 긴급 차단 조치 가이드를 3줄 이내로 요약해줘."
+            ai_report = ask_ai_bot(prompt)
+
+        st.markdown(f"> **[클라우드 AI 참모 긴급 진단 결과]**\n\n{ai_report}")
+        
+        st.markdown("---")
+        with st.spinner("🚀 GitHub 레포지토리(AI_Dashbord)에 탐지 로그 자동 백업 중..."):
+            github_res = push_log_to_github(f"침해사고 탐지 - {threat['url']}", ai_report)
+            st.info(github_res)
+
+        if st.button("🚨 상황 확인 완료 및 경보 해제"):
+            st.session_state.live_logs = [l for l in st.session_state.live_logs if l != threat]
+            st.session_state.detected_incident = None
+            st.rerun()
+
+    show_auto_incident_dialog(st.session_state.detected_incident)
+
 
 # ==========================================
-# 1. 통합 모니터링 대시보드 메뉴
+# 1. 통합 모니터링 대시보드 메뉴 (원래 디자인 완벽 유지)
 # ==========================================
 if menu == "통합 모니터링 대시보드":
     st.title("🛡️ 통합 모니터링 대시보드")
-    st.markdown("---")
-
-    # 🚨 침해사고 자동 감지 시 팝업(Dialog) 강제 발동
-    if st.session_state.detected_incident:
-        @st.dialog("🚨 [CRITICAL] 시스템 무단 접근(침해사고) 자동 탐지됨", width="large")
-        def show_auto_incident_dialog(threat):
-            st.error(f"⚠️ **실시간 로그 분석 중 중요 침해 패턴이 감지되었습니다!**\n\n- **탐지 시간:** {threat['time']}\n- **공격자 IP:** {threat['ip']}\n- **취약점/대상 경로:** `{threat['url']}`")
-            
-            with st.spinner("🤖 로컬 AI(qwen2.5:3b)가 침해 로그를 정밀 분석하고 대응 지침을 수립 중입니다..."):
-                prompt = f"보안 침해 사고 감지: 공격자 IP {threat['ip']}가 다음 경로로 시스템 파일에 접근했습니다: {threat['url']}. 1) 공격 위협도 평가, 2) 긴급 차단 및 방화벽 조치 가이드를 3줄 이내로 요약해줘."
-                ai_report = ask_ai_bot(prompt)
-
-            st.markdown(f"> **[AI 참모 긴급 진단 및 방어 가이드]**\n\n{ai_report}")
-            
-            st.markdown("---")
-            with st.spinner("🚀 GitHub 레포지토리(AI_Dashbord)에 침해 탐지 로그 자동 백업 중..."):
-                github_res = push_log_to_github(f"침해사고 탐지 - {threat['url']}", ai_report)
-                st.info(github_res)
-
-            if st.button("🚨 상황 확인 완료 및 경보 해제"):
-                # 처리 완료 후 해당 위협 로그를 제거하거나 상태 초기화
-                st.session_state.live_logs = [l for l in st.session_state.live_logs if l != threat]
-                st.session_state.detected_incident = None
-                st.rerun()
-
-        show_auto_incident_dialog(st.session_state.detected_incident)
-
-    # 🧪 [실제 테스트용 관리자 패널] 사용자가 임의로 로그를 유입시키는 테스트 영역
-    with st.expander("🛠️ [관제 테스트] 실시간 웹 로그 임의 인입 시뮬레이터 (여기서 로그를 추가해보세요)"):
-        col_a, col_b = st.columns(2)
-        with col_a:
-            test_ip = st.text_input("공격자 IP 입력", value="211.234.110.55")
-            test_url = st.text_input("요청 URL/Parameter 입력", value="/cgi-bin/vulnerable.cgi?file=/etc/passwd")
-        with col_b:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("📥 이 로그를 실시간 시스템 로그 스트림에 주입하기"):
-                new_log = {
-                    "time": datetime.now().strftime("%H:%M:%S"),
-                    "ip": test_ip,
-                    "method": "GET",
-                    "url": test_url,
-                    "status": 403
-                }
-                st.session_state.live_logs.insert(0, new_log)
-                st.success("✅ 로그가 시스템에 주입되었습니다! 상단 모니터링 및 AI 감지 엔진이 즉시 반응합니다.")
-                st.rerun()
-
-    st.markdown("### 📥 실시간 유입 웹 로그 스트림 (Access Log)")
-    log_stream_df = pd.DataFrame(st.session_state.live_logs)
-    st.dataframe(log_stream_df, use_container_width=True)
-
     st.markdown("---")
 
     col1, col2, col3, col4 = st.columns(4)
@@ -232,7 +203,7 @@ elif menu == "인프라 자원":
     
     c1, c2, c3 = st.columns(3)
     c1.metric("WAS 서버 클러스터", "8대 가동중", "CPU 평균 58%")
-    c2.metric("Ollama 로컬 컨테이너", "qwen2.5:3b 탑재", "VRAM 사용량 3.2GB")
+    c2.metric("클라우드 AI 연동", "GPT-4o-mini 탑재", "응답속도 초고속")
     c3.metric("SQLite DB 저장소", "정상 작동", "용량 24.5MB")
 
     st.markdown("### ⚙️ 시스템 노드별 자원 점유율")
@@ -259,13 +230,44 @@ elif menu == "관세행정 서비스 품질":
     )
     st.bar_chart(time_data)
 
+# ==========================================
+# 4. 실시간 로그 스트림 및 관제 메뉴 (시뮬레이터 분리)
+# ==========================================
+elif menu == "실시간 로그 스트림 및 관제":
+    st.title("📡 실시간 웹 로그 스트림 및 침해사고 모의 관제")
+    st.markdown("---")
+    st.info("💡 이곳에서 임의의 공격 로그(예: `/etc/passwd` 탈취 시도)를 주입하면, 백그라운드 스캐너가 즉시 감지하여 긴급 팝업과 GitHub 백업을 트리거합니다.")
+
+    with st.expander("🛠️ 실시간 웹 로그 임의 인입 시뮬레이터", expanded=True):
+        col_a, col_b = st.columns(2)
+        with col_a:
+            test_ip = st.text_input("공격자 IP 입력", value="211.234.110.55")
+            test_url = st.text_input("요청 URL/Parameter 입력", value="/cgi-bin/vulnerable.cgi?file=/etc/passwd")
+        with col_b:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("📥 이 로그를 시스템 로그 스트림에 주입하기"):
+                new_log = {
+                    "time": datetime.now().strftime("%H:%M:%S"),
+                    "ip": test_ip,
+                    "method": "GET",
+                    "url": test_url,
+                    "status": 403
+                }
+                st.session_state.live_logs.insert(0, new_log)
+                st.success("✅ 로그 주입 완료! 상단 및 백그라운드 AI 엔진이 즉시 위협을 탐지합니다.")
+                st.rerun()
+
+    st.markdown("### 📋 실시간 유입 웹 로그 스트림 (Access Log)")
+    log_stream_df = pd.DataFrame(st.session_state.live_logs)
+    st.dataframe(log_stream_df, use_container_width=True)
+
 
 # ==========================================
 # 🤖 우측 하단 동그란 노란색 "AI 챗봇" 플로팅 버튼 팝업 (모든 화면 공통)
 # ==========================================
 with st.popover("AI\n챗봇"):
-    st.markdown("### 💬 Local qwen2.5:3b 챗봇")
-    st.caption("어디서나 호출 가능한 실시간 인프라 참모")
+    st.markdown("### 💬 클라우드 AI 인프라 참모")
+    st.caption("초고속 클라우드 LLM 기반 실시간 응답")
     
     floating_chat_box = st.container(height=210)
     with floating_chat_box:
@@ -281,7 +283,7 @@ with st.popover("AI\n챗봇"):
     if st.button("보내기", key="floating_bot_send"):
         if float_input:
             st.session_state.chat_history.append(("user", float_input))
-            with st.spinner("생성 중..."):
+            with st.spinner("클라우드 AI 응답 생성 중..."):
                 reply = ask_ai_bot(float_input)
                 st.session_state.chat_history.append(("assistant", reply))
             st.rerun()
