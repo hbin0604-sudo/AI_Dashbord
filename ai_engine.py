@@ -3,27 +3,27 @@ import json
 from datetime import datetime
 import requests
 
-# 🌐 무료 Google Gemini API 설정
-# 발급받으신 본인의 Gemini API 키를 큰따옴표 사이에 넣어주세요.
+# 🌐 무료 Google Gemini 클라우드 API 설정
+# 💡 큰따옴표("") 사이에 AI Studio에서 받으신 본인의 API 키를 넣어주세요!
 GEMINI_API_KEY = "여기에_발급받은_무료_Gemini_키_입력"
 
-# 가장 안정적인 v1beta 정식 REST 엔드포인트
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+# 🚀 구글 클라우드 공식 v1 정식 엔드포인트 (404 에러 원천 차단형)
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
 # 🦊 GitLab 연동 설정
 GITLAB_PROJECT_ID = "hbin0604-sudo%2FAI_Dashbord"
 GITLAB_TOKEN = "glpat-T3gHK_Vziu5qRtPgRXHd62M6MQpvOjEKdTpxajM4bw8.01.171lz2q2c"
 
 def ask_ai_bot(user_prompt):
-    """ 구글 공식 REST API를 직접 호출하여 404/SDK 에러를 원천 차단하는 인프라 참모 함수 """
+    """ 클라우드 기반 초고속 Gemini API 질의응답 함수 """
     if not GEMINI_API_KEY or GEMINI_API_KEY == "여기에_발급받은_무료_Gemini_키_입력":
-        return "⚠️ Gemini API 키가 입력되지 않았습니다. ai_engine.py 파일 상단의 GEMINI_API_KEY 변수에 키를 넣어주세요."
+        return "⚠️ Gemini API 키가 입력되지 않았습니다. ai_engine.py 파일의 GEMINI_API_KEY 변수에 키를 넣어주세요."
     
     headers = {
         "Content-Type": "application/json"
     }
     
-    # 잼미나이 API 표준 페이로드 구조 (시스템 지침 + 유저 프롬프트)
+    # 구글 클라우드 표준 페이로드 (시스템 지침 포함)
     payload = {
         "system_instruction": {
             "parts": [{"text": "너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘."}]
@@ -39,10 +39,10 @@ def ask_ai_bot(user_prompt):
         response = requests.post(GEMINI_URL, json=payload, headers=headers, timeout=20)
         res_data = response.json()
         
-        # API 응답 에러 체크
+        # API 거부 에러 체크
         if "error" in res_data:
             err_msg = res_data["error"].get("message", "알 수 없는 API 에러")
-            return f"⚠️ Gemini API 거부됨: {err_msg}"
+            return f"⚠️ Gemini 클라우드 거부됨: {err_msg}"
             
         # 응답 텍스트 추출
         candidate = res_data.get("candidates", [])[0]
@@ -50,7 +50,7 @@ def ask_ai_bot(user_prompt):
         return answer_text
         
     except Exception as e:
-        return f"⚠️ Gemini API 통신 오류: {e}"
+        return f"⚠️ 클라우드 AI 통신 오류: {e}"
 
 def push_log_to_gitlab(event_name, ai_diagnosis_text):
     """ AI가 탐지한 침해사고 로그를 GitLab Repository에 자동 커밋하는 함수 """
