@@ -1,41 +1,54 @@
 import base64
 import json
 from datetime import datetime
-import google.generativeai as genai
 import requests
 
 # 🌐 무료 Google Gemini API 설정
-# 발급받으신 본인의 Gemini API 키를 입력하세요
+# 발급받으신 본인의 Gemini API 키를 큰따옴표 사이에 넣어주세요.
 GEMINI_API_KEY = "여기에_발급받은_무료_Gemini_키_입력"
-genai.configure(api_key=GEMINI_API_KEY)
 
-# 💡 404 에러를 원천 차단하는 최신 안정형 모델명 설정
-MODEL_NAME = "gemini-1.5-flash"
+# 가장 안정적인 v1beta 정식 REST 엔드포인트
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
 # 🦊 GitLab 연동 설정
 GITLAB_PROJECT_ID = "hbin0604-sudo%2FAI_Dashbord"
 GITLAB_TOKEN = "glpat-T3gHK_Vziu5qRtPgRXHd62M6MQpvOjEKdTpxajM4bw8.01.171lz2q2c"
 
 def ask_ai_bot(user_prompt):
-    """ Google Gemini 무료 API를 통한 초고속 인프라 참모 질의응답 (안정성 강화) """
+    """ 구글 공식 REST API를 직접 호출하여 404/SDK 에러를 원천 차단하는 인프라 참모 함수 """
     if not GEMINI_API_KEY or GEMINI_API_KEY == "여기에_발급받은_무료_Gemini_키_입력":
-        return "⚠️ Gemini API 키가 입력되지 않았습니다. ai_engine.py에 키를 입력해주세요."
+        return "⚠️ Gemini API 키가 입력되지 않았습니다. ai_engine.py 파일 상단의 GEMINI_API_KEY 변수에 키를 넣어주세요."
+    
+    headers = {
+        "Content-Type": "application/json"
+    }
+    
+    # 잼미나이 API 표준 페이로드 구조 (시스템 지침 + 유저 프롬프트)
+    payload = {
+        "system_instruction": {
+            "parts": [{"text": "너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘."}]
+        },
+        "contents": [
+            {
+                "parts": [{"text": user_prompt}]
+            }
+        ]
+    }
     
     try:
-        # 최신 SDK 표준 방식으로 모델 인스턴스 호출
-        generation_config = {
-            "temperature": 0.3,
-        }
+        response = requests.post(GEMINI_URL, json=payload, headers=headers, timeout=20)
+        res_data = response.json()
         
-        # 시스템 지침을 포함하여 모델 생성
-        model = genai.GenerativeModel(
-            model_name=MODEL_NAME,
-            system_instruction="너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘.",
-            generation_config=generation_config
-        )
+        # API 응답 에러 체크
+        if "error" in res_data:
+            err_msg = res_data["error"].get("message", "알 수 없는 API 에러")
+            return f"⚠️ Gemini API 거부됨: {err_msg}"
+            
+        # 응답 텍스트 추출
+        candidate = res_data.get("candidates", [])[0]
+        answer_text = candidate.get("content", {}).get("parts", [])[0].get("text", "응답을 생성하지 못했습니다.")
+        return answer_text
         
-        response = model.generate_content(user_prompt)
-        return response.text
     except Exception as e:
         return f"⚠️ Gemini API 통신 오류: {e}"
 
@@ -47,7 +60,7 @@ def push_log_to_gitlab(event_name, ai_diagnosis_text):
     log_data = {
         "event": event_name,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "model": MODEL_NAME,
+        "model": "gemini-1.5-flash",
         "ai_report": ai_diagnosis_text
     }
     
