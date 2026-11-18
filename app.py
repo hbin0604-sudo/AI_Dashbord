@@ -20,43 +20,52 @@ if "chat_history" not in st.session_state:
 if "selected_log_category" not in st.session_state:
     st.session_state.selected_log_category = None
 
-# 📌 우측 하단 "AI 챗봇" 플로팅 버튼 바 형식 오류 근본 해결 CSS
+# 📌 [핵심] 우측 하단 맨 밑에 동그란 노란색 버튼으로 강제 고정하는 정밀 CSS
 st.markdown("""
 <style>
-/* 팝업을 담고 있는 Streamlit 엘리먼트 컨테이너를 우측 하단에 절대 고정 및 너비 축소 */
+/* 1. 팝업을 담고 있는 컨테이너를 화면 우측 하단(Bottom: 30px, Right: 30px)에 절대 고정 */
 div.element-container:has([data-testid="stPopover"]) {
     position: fixed !important;
     bottom: 30px !important;
     right: 30px !important;
+    top: auto !important;
+    left: auto !important;
     z-index: 999999 !important;
-    width: auto !important;
-    max-width: none !important;
+    margin: 0 !important;
 }
 
 [data-testid="stPopover"] {
-    width: auto !important;
+    position: static !important;
 }
 
-/* 버튼을 깔끔하고 예쁜 노란색 둥근 알약 형태로 고정 */
-[data-testid="stPopover"] > button {
+/* 2. 버튼을 완벽한 동그란 노란색 원형 버튼으로 성형 */
+[data-testid="stPopover"] > button,
+[data-testid="stPopover"] button {
+    width: 65px !important;
+    height: 65px !important;
+    min-width: 65px !important;
+    min-height: 65px !important;
+    max-width: 65px !important;
+    max-height: 65px !important;
+    border-radius: 50% !important;
     background-color: #FFD54F !important;
     color: #333333 !important;
     font-weight: bold !important;
-    font-size: 15px !important;
-    border-radius: 30px !important;
-    padding: 10px 22px !important;
-    box-shadow: 0px 6px 20px rgba(0,0,0,0.4) !important;
+    font-size: 13px !important;
+    box-shadow: 0px 8px 25px rgba(0,0,0,0.45) !important;
     border: 3px solid #FFC107 !important;
-    width: auto !important;
-    white-space: nowrap !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    padding: 0px !important;
+    text-align: center !important;
+    white-space: pre-wrap !important;
+    line-height: 1.2 !important;
 }
 
 [data-testid="stPopover"] > button:hover {
     background-color: #FFC107 !important;
-    transform: scale(1.05);
+    transform: scale(1.08);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -174,9 +183,9 @@ elif menu == "관세행정 서비스 품질":
 
 
 # ==========================================
-# 🤖 우측 하단 "AI 챗봇" 플로팅 버튼 팝업 (모든 화면 공통)
+# 🤖 우측 하단 동그란 노란색 "AI\n챗봇" 플로팅 버튼 팝업 (모든 화면 공통)
 # ==========================================
-with st.popover("🤖 AI 챗봇"):
+with st.popover("AI\n챗봇"):
     st.markdown("### 💬 Local qwen2.5:3b 챗봇")
     st.caption("어디서나 호출 가능한 실시간 인프라 참모")
     
