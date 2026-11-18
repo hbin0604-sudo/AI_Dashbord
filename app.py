@@ -20,7 +20,29 @@ if "chat_history" not in st.session_state:
 if "selected_log_category" not in st.session_state:
     st.session_state.selected_log_category = None
 
-# 📌 사이드바 네비게이션 메뉴 (요청하신 4개 메뉴 구성)
+# 📌 우측 하단 고정형(Floating) AI Bot 버튼을 위한 전역 CSS 주입
+st.markdown("""
+<style>
+/* Streamlit Popover 버튼을 화면 우측 하단에 고정 */
+div[data-testid="stPopover"] {
+    position: fixed !important;
+    bottom: 30px !important;
+    right: 30px !important;
+    z-index: 999999 !important;
+}
+div[data-testid="stPopover"] > button {
+    background-color: #ffeb3b !important;
+    color: #333333 !important;
+    border-radius: 50px !important;
+    font-weight: bold !important;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.3) !important;
+    border: 2px solid #fbc02d !important;
+    padding: 10px 20px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# 📌 사이드바 네비게이션 메뉴 (요청하신 4개 메뉴)
 st.sidebar.header("🧭 관세청 AIOps 메뉴")
 menu = st.sidebar.radio(
     "이동할 메뉴를 선택하세요:",
@@ -43,7 +65,7 @@ if menu == "통합 모니터링 대시보드":
     st.title("🛡️ 통합 모니터링 대시보드")
     st.markdown("---")
 
-    # 상단 지표 카드 (사진 1 참고)
+    # 상단 지표 카드
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("💚 시스템 Health", "98점", "↑ 최상")
     col2.metric("💻 서버 CPU", "62%", "↓ -3%")
@@ -65,7 +87,6 @@ if menu == "통합 모니터링 대시보드":
             {"업무 분류": "전산선별", "처리 건수": "856", "상태": "🟢 정상"},
         ]
 
-        # 테이블 헤더
         cols = st.columns([2, 1, 1])
         cols[0].markdown("**업무 분류**")
         cols[1].markdown("**처리 건수**")
@@ -87,7 +108,7 @@ if menu == "통합 모니터링 대시보드":
         )
         st.line_chart(chart_data)
 
-    # WEB Log 팝업 모달 처리
+    # WEB Log 상세 팝업 모달
     if st.session_state.selected_log_category:
         @st.dialog(f"유니패스 WEB Log - [{st.session_state.selected_log_category}] 상세", width="large")
         def show_web_log_popup(category):
@@ -136,14 +157,13 @@ elif menu == "관세행정업무량":
     st.bar_chart(time_data)
 
 # ==========================================
-# 4. AI 실시간 진단 챗봇 메뉴
+# 4. AI 실시간 진단 챗봇 메뉴 (별도 탭)
 # ==========================================
 elif menu == "AI 실시간 진단 챗봇":
     st.title("🤖 AI 실시간 진단 챗봇 (Gemma 9B)")
     st.markdown("---")
     st.caption("외부망이 완전히 차단된 로컬 폐쇄망 환경에서 동작하는 관세청 전용 AI 수석 참모입니다.")
 
-    # 채팅 기록 출력 영역
     chat_box = st.container(height=450)
     with chat_box:
         if not st.session_state.chat_history:
@@ -154,7 +174,6 @@ elif menu == "AI 실시간 진단 챗봇":
             else:
                 st.markdown(f"**🤖 AI 참모:** {msg}")
 
-    # 입력 폼
     with st.form(key="chat_form", clear_on_submit=True):
         user_text = st.text_input("메시지를 입력하세요 (예: 현재 수입신고 지연 원인 분석해줘)")
         submit_btn = st.form_submit_button("전송하기")
@@ -163,5 +182,33 @@ elif menu == "AI 실시간 진단 챗봇":
             st.session_state.chat_history.append(("user", user_text))
             with st.spinner("로컬 Gemma 9B가 답변을 추론 중입니다..."):
                 reply = ask_ai_bot(user_text)
+                st.session_state.chat_history.append(("assistant", reply))
+            st.rerun()
+
+
+# ==========================================
+# 🤖 우측 하단 고정형 AI Bot 플로팅 챗봇 팝업 (모든 화면 공통)
+# ==========================================
+with st.popover("🤖 AI Bot"):
+    st.markdown("### 💬 Local Gemma 9B 빠른 챗봇")
+    st.caption("어디서나 호출 가능한 폐쇄망 실시간 참모")
+    
+    floating_chat_box = st.container(height=280)
+    with floating_chat_box:
+        if not st.session_state.chat_history:
+            st.info("궁금한 점을 바로 물어보세요!")
+        for role, msg in st.session_state.chat_history:
+            if role == "user":
+                st.markdown(f"**나:** {msg}")
+            else:
+                st.markdown(f"**AI:** {msg}")
+
+    # 팝업 내 입력창
+    float_input = st.text_input("빠른 질문 입력...", key="floating_bot_input")
+    if st.button("보내기", key="floating_bot_send"):
+        if float_input:
+            st.session_state.chat_history.append(("user", float_input))
+            with st.spinner("생성 중..."):
+                reply = ask_ai_bot(float_input)
                 st.session_state.chat_history.append(("assistant", reply))
             st.rerun()
