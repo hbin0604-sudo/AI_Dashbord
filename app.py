@@ -186,4 +186,27 @@ elif menu == "관세행정 서비스 품질":
 
 
 # ==========================================
-# 🤖 우측 하단 동그란 노란색 "AI 챗봇" 플로팅 버튼 팝업 (모든 화면
+# 🤖 우측 하단 동그란 노란색 "AI 챗봇" 플로팅 버튼 팝업 (모든 화면 공통)
+# ==========================================
+with st.popover("AI\n챗봇"):
+    st.markdown("### 💬 Local qwen2.5:3b 챗봇")
+    st.caption("어디서나 호출 가능한 실시간 인프라 참모")
+    
+    floating_chat_box = st.container(height=260)
+    with floating_chat_box:
+        if not st.session_state.chat_history:
+            st.info("궁금한 점을 바로 물어보세요!")
+        for role, msg in st.session_state.chat_history:
+            if role == "user":
+                st.markdown(f"**나:** {msg}")
+            else:
+                st.markdown(f"**AI:** {msg}")
+
+    float_input = st.text_input("빠른 질문 입력...", key="floating_bot_input")
+    if st.button("보내기", key="floating_bot_send"):
+        if float_input:
+            st.session_state.chat_history.append(("user", float_input))
+            with st.spinner("생성 중..."):
+                reply = ask_ai_bot(float_input)
+                st.session_state.chat_history.append(("assistant", reply))
+            st.rerun()
