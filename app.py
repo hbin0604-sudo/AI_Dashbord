@@ -20,37 +20,38 @@ if "chat_history" not in st.session_state:
 if "selected_log_category" not in st.session_state:
     st.session_state.selected_log_category = None
 
-# 📌 우측 하단 노란색 "AI 챗봇" 플로팅 버튼 강제 고정 CSS
+# 📌 우측 하단 "AI 챗봇" 플로팅 버튼 바 형식 오류 근본 해결 CSS
 st.markdown("""
 <style>
-/* 팝업 컨테이너 위치를 화면 우측 하단에 절대 고정 */
-[data-testid="stPopover"] {
+/* 팝업을 담고 있는 Streamlit 엘리먼트 컨테이너를 우측 하단에 절대 고정 및 너비 축소 */
+div.element-container:has([data-testid="stPopover"]) {
     position: fixed !important;
     bottom: 30px !important;
     right: 30px !important;
     z-index: 999999 !important;
+    width: auto !important;
+    max-width: none !important;
 }
 
-/* 내부 래퍼 늘어남 방지 */
-[data-testid="stPopover"] > div {
-    flex: none !important;
+[data-testid="stPopover"] {
+    width: auto !important;
 }
 
-/* 버튼을 가독성 좋은 노란색 둥근 알약(Pill) 형태로 성형 */
-[data-testid="stPopover"] > button, 
-[data-testid="stPopover"] button {
+/* 버튼을 깔끔하고 예쁜 노란색 둥근 알약 형태로 고정 */
+[data-testid="stPopover"] > button {
     background-color: #FFD54F !important;
     color: #333333 !important;
     font-weight: bold !important;
     font-size: 15px !important;
     border-radius: 30px !important;
-    padding: 12px 20px !important;
+    padding: 10px 22px !important;
     box-shadow: 0px 6px 20px rgba(0,0,0,0.4) !important;
     border: 3px solid #FFC107 !important;
+    width: auto !important;
+    white-space: nowrap !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    flex: none !important;
 }
 
 [data-testid="stPopover"] > button:hover {
@@ -60,7 +61,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 📌 사이드바 네비게이션 메뉴 (요청하신 3개 메뉴로 정돈)
+# 📌 사이드바 네비게이션 메뉴 (3개 메뉴 고정)
 st.sidebar.header("🧭 관세청 AIOps 메뉴")
 menu = st.sidebar.radio(
     "이동할 메뉴를 선택하세요:",
@@ -157,7 +158,7 @@ elif menu == "인프라 자원":
     st.dataframe(resource_df, use_container_width=True)
 
 # ==========================================
-# 3. 관세행정 서비스 품질 메뉴 (변경됨)
+# 3. 관세행정 서비스 품질 메뉴
 # ==========================================
 elif menu == "관세행정 서비스 품질":
     st.title("📈 관세행정 서비스 품질 및 업무량 분석")
