@@ -20,34 +20,39 @@ if "chat_history" not in st.session_state:
 if "selected_log_category" not in st.session_state:
     st.session_state.selected_log_category = None
 
-# 📌 우측 하단 동그란 노란색 플로팅 버튼 CSS 디자인 적용
+# 📌 우측 하단 동그란 노란색 플로팅 버튼 강제 고정 CSS
 st.markdown("""
 <style>
-/* Streamlit Popover를 우측 하단에 동그란 버튼으로 고정 */
+/* Streamlit Popover 컨테이너를 화면 우측 하단에 완전히 고정 */
 div[data-testid="stPopover"] {
     position: fixed !important;
     bottom: 30px !important;
     right: 30px !important;
     z-index: 999999 !important;
 }
+
+/* 팝업 트리거 버튼을 완벽한 동그란 노란색 버튼으로 성형 */
 div[data-testid="stPopover"] > button {
-    width: 65px !important;
-    height: 65px !important;
+    width: 60px !important;
+    height: 60px !important;
+    min-height: 60px !important;
+    max-height: 60px !important;
     border-radius: 50% !important;
     background-color: #FFD54F !important;
     color: #333333 !important;
     font-weight: bold !important;
-    box-shadow: 0px 6px 15px rgba(0,0,0,0.3) !important;
+    box-shadow: 0px 6px 20px rgba(0,0,0,0.35) !important;
     border: 3px solid #FFC107 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     padding: 0px !important;
-    font-size: 14px !important;
+    font-size: 16px !important;
 }
+
 div[data-testid="stPopover"] > button:hover {
     background-color: #FFC107 !important;
-    transform: scale(1.05);
+    transform: scale(1.08);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -66,7 +71,7 @@ menu = st.sidebar.radio(
 
 st.sidebar.markdown("---")
 st.sidebar.success("🟢 폐쇄망(On-Premise) 모드")
-st.sidebar.info("🤖 Local LLM: Gemma 9B (Ollama)")
+st.sidebar.info("🤖 Local LLM: qwen2.5:3b (Ollama)")
 
 # ==========================================
 # 1. 통합 모니터링 대시보드 메뉴
@@ -137,7 +142,7 @@ elif menu == "인프라 자원":
     
     c1, c2, c3 = st.columns(3)
     c1.metric("WAS 서버 클러스터", "8대 가동중", "CPU 평균 58%")
-    c2.metric("Ollama 로컬 컨테이너", "Gemma 9B 탑재", "VRAM 사용량 6.4GB")
+    c2.metric("Ollama 로컬 컨테이너", "qwen2.5:3b 탑재", "VRAM 사용량 3.2GB")
     c3.metric("SQLite DB 저장소", "정상 작동", "용량 24.5MB")
 
     st.markdown("### ⚙️ 시스템 노드별 자원 점유율")
@@ -168,7 +173,7 @@ elif menu == "관세행정업무량":
 # 4. AI 실시간 진단 챗봇 메뉴
 # ==========================================
 elif menu == "AI 실시간 진단 챗봇":
-    st.title("🤖 AI 실시간 진단 챗봇 (Gemma 9B)")
+    st.title("🤖 AI 실시간 진단 챗봇 (qwen2.5:3b)")
     st.markdown("---")
     st.caption("외부망이 완전히 차단된 로컬 폐쇄망 환경에서 동작하는 관세청 전용 AI 수석 참모입니다.")
 
@@ -188,34 +193,21 @@ elif menu == "AI 실시간 진단 챗봇":
         
         if submit_btn and user_text:
             st.session_state.chat_history.append(("user", user_text))
-            with st.spinner("로컬 Gemma 9B가 답변을 추론 중입니다..."):
+            with st.spinner("로컬 qwen2.5:3b가 답변을 추론 중입니다..."):
                 reply = ask_ai_bot(user_text)
                 st.session_state.chat_history.append(("assistant", reply))
             st.rerun()
 
 
-# ========================================
-# 🤖 우측 하단 동그란 노란색 AI Bot 플로팅 버튼 팝업
-# ========================================
-with st.popover("🤖 Bot"):
-    st.markdown("### 💬 Local Gemma 9B 빠른 챗봇")
-    st.caption("폐쇄망 실시간 인프라 참모")
+# ==========================================
+# 🤖 우측 하단 동그란 노란색 AI Bot 플로팅 버튼 팝업 (모든 화면 공통)
+# ==========================================
+with st.popover("🤖"):
+    st.markdown("### 💬 Local qwen2.5:3b 챗봇")
+    st.caption("어디서나 호출 가능한 실시간 참모")
     
-    floating_chat_box = st.container(height=280)
+    floating_chat_box = st.container(height=260)
     with floating_chat_box:
         if not st.session_state.chat_history:
             st.info("궁금한 점을 바로 물어보세요!")
-        for role, msg in st.session_state.chat_history:
-            if role == "user":
-                st.markdown(f"**나:** {msg}")
-            else:
-                st.markdown(f"**AI:** {msg}")
-
-    float_input = st.text_input("빠른 질문 입력...", key="floating_bot_input")
-    if st.button("보내기", key="floating_bot_send"):
-        if float_input:
-            st.session_state.chat_history.append(("user", float_input))
-            with st.spinner("생성 중..."):
-                reply = ask_ai_bot(float_input)
-                st.session_state.chat_history.append(("assistant", reply))
-            st.rerun()
+        for role
