@@ -8,7 +8,7 @@ MODEL_NAME = "qwen2.5:3b"
 
 # GitHub 연동 설정 (저장소 및 토큰 정보)
 GITHUB_REPO = "hbin0604-sudo/AI_Dashbord"
-# 본인의 GitHub Personal Access Token(PAT)을 여기에 입력해주세요. (예: "ghp_xxxxxxxxxxxx")
+# 💡 본인의 GitHub Personal Access Token(PAT)을 아래 빈 따옴표 안에 입력해주세요!
 GITHUB_TOKEN = "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN" 
 
 def ask_ai_bot(user_prompt):
@@ -19,7 +19,7 @@ def ask_ai_bot(user_prompt):
         "stream": False
     }
     try:
-        # 타임아웃을 60초로 늘려 응답 지연(타임아웃 에러) 해결
+        # 타임아웃을 60초로 연장하여 응답 지연 방지
         response = requests.post(OLLAMA_URL, json=payload, timeout=60)
         return response.json().get("response", "로컬 AI 응답 생성 실패")
     except Exception as e:
@@ -41,7 +41,7 @@ def push_log_to_github(event_name, ai_diagnosis_text):
         "ai_report": ai_diagnosis_text
     }
     
-    # JSON 데이터를 Base64로 인코딩 (GitHub Contents API 규격)
+    # JSON 데이터를 Base64로 인코딩 (GitHub API 규격)
     json_bytes = json.dumps(log_data, ensure_ascii=False, indent=4).encode("utf-8")
     base64_content = base64.b64encode(json_bytes).decode("utf-8")
 
@@ -53,7 +53,7 @@ def push_log_to_github(event_name, ai_diagnosis_text):
     payload = {
         "message": f"AIOps-Guard: 자동 AI 탐지 로그 기록 ({timestamp_str})",
         "content": base64_content,
-        "branch": "main"  # 기본 브랜치명 (필요시 수정)
+        "branch": "main"
     }
 
     try:
