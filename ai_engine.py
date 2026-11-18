@@ -9,26 +9,32 @@ import requests
 GEMINI_API_KEY = "여기에_발급받은_무료_Gemini_키_입력"
 genai.configure(api_key=GEMINI_API_KEY)
 
-# 💡 404 에러 원인을 완전히 차단하는 안정적인 정식 모델명
-MODEL_NAME = "gemini-pro"
+# 💡 404 에러를 원천 차단하는 최신 안정형 모델명 설정
+MODEL_NAME = "gemini-1.5-flash"
 
 # 🦊 GitLab 연동 설정
 GITLAB_PROJECT_ID = "hbin0604-sudo%2FAI_Dashbord"
 GITLAB_TOKEN = "glpat-T3gHK_Vziu5qRtPgRXHd62M6MQpvOjEKdTpxajM4bw8.01.171lz2q2c"
 
 def ask_ai_bot(user_prompt):
-    """ Google Gemini 무료 API를 통한 초고속 인프라 참모 질의응답 """
+    """ Google Gemini 무료 API를 통한 초고속 인프라 참모 질의응답 (안정성 강화) """
     if not GEMINI_API_KEY or GEMINI_API_KEY == "여기에_발급받은_무료_Gemini_키_입력":
         return "⚠️ Gemini API 키가 입력되지 않았습니다. ai_engine.py에 키를 입력해주세요."
     
     try:
-        # gemini-pro 모델 규격에 맞춘 인스턴스 생성
-        model = genai.GenerativeModel(MODEL_NAME)
+        # 최신 SDK 표준 방식으로 모델 인스턴스 호출
+        generation_config = {
+            "temperature": 0.3,
+        }
         
-        # 시스템 프롬프트와 유저 프롬프트를 결합하여 안정적으로 호출
-        full_prompt = f"[시스템 지침: 너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘.]\n\n질문: {user_prompt}"
+        # 시스템 지침을 포함하여 모델 생성
+        model = genai.GenerativeModel(
+            model_name=MODEL_NAME,
+            system_instruction="너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘.",
+            generation_config=generation_config
+        )
         
-        response = model.generate_content(full_prompt)
+        response = model.generate_content(user_prompt)
         return response.text
     except Exception as e:
         return f"⚠️ Gemini API 통신 오류: {e}"
