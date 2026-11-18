@@ -20,7 +20,7 @@ if "chat_history" not in st.session_state:
 if "selected_log_category" not in st.session_state:
     st.session_state.selected_log_category = None
 
-# 📌 우측 하단 동그란 노란색 플로팅 버튼 강제 고정 CSS (너비/Flex 늘어남 방지)
+# 📌 우측 하단 노란색 "AI 챗봇" 플로팅 버튼 강제 고정 CSS
 st.markdown("""
 <style>
 /* 팝업 컨테이너 위치를 화면 우측 하단에 절대 고정 */
@@ -31,50 +31,43 @@ st.markdown("""
     z-index: 999999 !important;
 }
 
-/* 내부 래퍼가 늘어나는 것 방지 */
+/* 내부 래퍼 늘어남 방지 */
 [data-testid="stPopover"] > div {
-    width: 65px !important;
     flex: none !important;
 }
 
-/* 버튼 자체를 강제 원형으로 성형 */
+/* 버튼을 가독성 좋은 노란색 둥근 알약(Pill) 형태로 성형 */
 [data-testid="stPopover"] > button, 
 [data-testid="stPopover"] button {
-    width: 65px !important;
-    height: 65px !important;
-    min-width: 65px !important;
-    max-width: 65px !important;
-    min-height: 65px !important;
-    max-height: 65px !important;
-    border-radius: 50% !important;
     background-color: #FFD54F !important;
     color: #333333 !important;
+    font-weight: bold !important;
+    font-size: 15px !important;
+    border-radius: 30px !important;
+    padding: 12px 20px !important;
     box-shadow: 0px 6px 20px rgba(0,0,0,0.4) !important;
     border: 3px solid #FFC107 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 0px !important;
-    font-size: 22px !important;
     flex: none !important;
 }
 
 [data-testid="stPopover"] > button:hover {
     background-color: #FFC107 !important;
-    transform: scale(1.08);
+    transform: scale(1.05);
 }
 </style>
 """, unsafe_allow_html=True)
 
-# 📌 사이드바 네비게이션 메뉴 (4개 메뉴 고정)
+# 📌 사이드바 네비게이션 메뉴 (요청하신 3개 메뉴로 정돈)
 st.sidebar.header("🧭 관세청 AIOps 메뉴")
 menu = st.sidebar.radio(
     "이동할 메뉴를 선택하세요:",
     [
         "통합 모니터링 대시보드", 
         "인프라 자원", 
-        "관세행정업무량", 
-        "AI 실시간 진단 챗봇"
+        "관세행정 서비스 품질"
     ]
 )
 
@@ -164,13 +157,13 @@ elif menu == "인프라 자원":
     st.dataframe(resource_df, use_container_width=True)
 
 # ==========================================
-# 3. 관세행정업무량 메뉴
+# 3. 관세행정 서비스 품질 메뉴 (변경됨)
 # ==========================================
-elif menu == "관세행정업무량":
-    st.title("📈 관세행정 업무량 통계 및 분석")
+elif menu == "관세행정 서비스 품질":
+    st.title("📈 관세행정 서비스 품질 및 업무량 분석")
     st.markdown("---")
     
-    st.markdown("### 🕒 시간대별 수입/수출 신고 건수 분석")
+    st.markdown("### 🕒 시간대별 수입/수출 신고 처리 서비스 품질 현황")
     time_data = pd.DataFrame(
         np.random.randint(100, 500, size=(24, 2)),
         columns=["수입신고 건수", "수출신고 건수"],
@@ -178,42 +171,13 @@ elif menu == "관세행정업무량":
     )
     st.bar_chart(time_data)
 
-# ==========================================
-# 4. AI 실시간 진단 챗봇 메뉴
-# ==========================================
-elif menu == "AI 실시간 진단 챗봇":
-    st.title("🤖 AI 실시간 진단 챗봇 (qwen2.5:3b)")
-    st.markdown("---")
-    st.caption("외부망이 완전히 차단된 로컬 폐쇄망 환경에서 동작하는 관세청 전용 AI 수석 참모입니다.")
-
-    chat_box = st.container(height=450)
-    with chat_box:
-        if not st.session_state.chat_history:
-            st.info("👋 안녕하세요! 관세청 인프라 관련 질문이나 로그 분석 요청을 남겨주세요.")
-        for role, msg in st.session_state.chat_history:
-            if role == "user":
-                st.markdown(f"**👤 사용자:** {msg}")
-            else:
-                st.markdown(f"**🤖 AI 참모:** {msg}")
-
-    with st.form(key="chat_form", clear_on_submit=True):
-        user_text = st.text_input("메시지를 입력하세요 (예: 현재 수입신고 지연 원인 분석해줘)")
-        submit_btn = st.form_submit_button("전송하기")
-        
-        if submit_btn and user_text:
-            st.session_state.chat_history.append(("user", user_text))
-            with st.spinner("로컬 qwen2.5:3b가 답변을 추론 중입니다..."):
-                reply = ask_ai_bot(user_text)
-                st.session_state.chat_history.append(("assistant", reply))
-            st.rerun()
-
 
 # ==========================================
-# 🤖 우측 하단 동그란 노란색 AI Bot 플로팅 버튼 팝업 (모든 화면 공통)
+# 🤖 우측 하단 "AI 챗봇" 플로팅 버튼 팝업 (모든 화면 공통)
 # ==========================================
-with st.popover("🤖"):
+with st.popover("🤖 AI 챗봇"):
     st.markdown("### 💬 Local qwen2.5:3b 챗봇")
-    st.caption("어디서나 호출 가능한 실시간 참모")
+    st.caption("어디서나 호출 가능한 실시간 인프라 참모")
     
     floating_chat_box = st.container(height=260)
     with floating_chat_box:
