@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 
 from database import init_db, save_diagnostic, load_history, get_web_logs
-from ai_engine import ask_ai_bot, push_log_to_github
+from ai_engine import ask_ai_bot, push_log_to_gitlab
 
 conn = init_db()
 
@@ -79,7 +79,7 @@ div[data-testid="stPopover"] > button:hover {
 </style>
 """, unsafe_allow_html=True)
 
-# 📌 사이드바 네비게이션 메뉴 (관제 로그 메뉴 분리 추가)
+# 📌 사이드바 네비게이션 메뉴
 st.sidebar.header("🧭 관세청 AIOps 메뉴")
 menu = st.sidebar.radio(
     "이동할 메뉴를 선택하세요:",
@@ -109,7 +109,7 @@ current_threat = scan_logs_for_threats()
 if current_threat and not st.session_state.detected_incident:
     st.session_state.detected_incident = current_threat
 
-# 공통 침해사고 자동 감지 팝업 (어떤 화면에 있든 발동)
+# 공통 침해사고 자동 감지 팝업
 if st.session_state.detected_incident:
     @st.dialog("🚨 [CRITICAL] 시스템 무단 접근(침해사고) 자동 탐지됨", width="large")
     def show_auto_incident_dialog(threat):
@@ -122,9 +122,9 @@ if st.session_state.detected_incident:
         st.markdown(f"> **[클라우드 AI 참모 긴급 진단 결과]**\n\n{ai_report}")
         
         st.markdown("---")
-        with st.spinner("🚀 GitHub 레포지토리(AI_Dashbord)에 탐지 로그 자동 백업 중..."):
-            github_res = push_log_to_github(f"침해사고 탐지 - {threat['url']}", ai_report)
-            st.info(github_res)
+        with st.spinner("🚀 GitLab 레포지토리에 탐지 로그 자동 백업 중..."):
+            gitlab_res = push_log_to_gitlab(f"침해사고 탐지 - {threat['url']}", ai_report)
+            st.info(gitlab_res)
 
         if st.button("🚨 상황 확인 완료 및 경보 해제"):
             st.session_state.live_logs = [l for l in st.session_state.live_logs if l != threat]
@@ -135,7 +135,7 @@ if st.session_state.detected_incident:
 
 
 # ==========================================
-# 1. 통합 모니터링 대시보드 메뉴 (원래 디자인 완벽 유지)
+# 1. 통합 모니터링 대시보드 메뉴
 # ==========================================
 if menu == "통합 모니터링 대시보드":
     st.title("🛡️ 통합 모니터링 대시보드")
@@ -231,12 +231,12 @@ elif menu == "관세행정 서비스 품질":
     st.bar_chart(time_data)
 
 # ==========================================
-# 4. 실시간 로그 스트림 및 관제 메뉴 (시뮬레이터 분리)
+# 4. 실시간 로그 스트림 및 관제 메뉴
 # ==========================================
 elif menu == "실시간 로그 스트림 및 관제":
     st.title("📡 실시간 웹 로그 스트림 및 침해사고 모의 관제")
     st.markdown("---")
-    st.info("💡 이곳에서 임의의 공격 로그(예: `/etc/passwd` 탈취 시도)를 주입하면, 백그라운드 스캐너가 즉시 감지하여 긴급 팝업과 GitHub 백업을 트리거합니다.")
+    st.info("💡 이곳에서 임의의 공격 로그(예: `/etc/passwd` 탈취 시도)를 주입하면, 백그라운드 스캐너가 즉시 감지하여 긴급 팝업과 GitLab 백업을 트리거합니다.")
 
     with st.expander("🛠️ 실시간 웹 로그 임의 인입 시뮬레이터", expanded=True):
         col_a, col_b = st.columns(2)
@@ -254,7 +254,7 @@ elif menu == "실시간 로그 스트림 및 관제":
                     "status": 403
                 }
                 st.session_state.live_logs.insert(0, new_log)
-                st.success("✅ 로그 주입 완료! 상단 및 백그라운드 AI 엔진이 즉시 위협을 탐지합니다.")
+                st.success("✅ 로그 주입 완료! 백그라운드 AI 엔진이 즉시 위협을 탐지합니다.")
                 st.rerun()
 
     st.markdown("### 📋 실시간 유입 웹 로그 스트림 (Access Log)")
@@ -263,7 +263,7 @@ elif menu == "실시간 로그 스트림 및 관제":
 
 
 # ==========================================
-# 🤖 우측 하단 동그란 노란색 "AI 챗봇" 플로팅 버튼 팝업 (모든 화면 공통)
+# 🤖 우측 하단 동그란 노란색 "AI 챗봇" 플로팅 버튼 팝업
 # ==========================================
 with st.popover("AI\n챗봇"):
     st.markdown("### 💬 클라우드 AI 인프라 참모")
@@ -289,8 +289,8 @@ with st.popover("AI\n챗봇"):
             st.rerun()
 
     st.markdown("---")
-    if st.button("🚀 탐지 로그 GitHub 백업"):
-        with st.spinner("GitHub 레포지토리에 로그 기록 중..."):
+    if st.button("🚀 탐지 로그 GitLab 백업"):
+        with st.spinner("GitLab 레포지토리에 로그 기록 중..."):
             last_msg = st.session_state.chat_history[-1][1] if st.session_state.chat_history else "초기 시스템 정상 가동 상태"
-            res_msg = push_log_to_github("AIOps 수동 진단 및 챗봇 로그 백업", last_msg)
+            res_msg = push_log_to_gitlab("AIOps 수동 진단 및 챗봇 로그 백업", last_msg)
             st.info(res_msg)
