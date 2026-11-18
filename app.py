@@ -3,77 +3,107 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-# 분리한 모듈 임포트
-from database import init_db, save_diagnostic, load_history
-from ai_engine import get_gemma_diagnosis
+from database import init_db, save_diagnostic, load_history, get_web_logs
+from ai_engine import get_gemma_diagnosis, ask_ai_bot
 
-# DB 연결 초기화
 conn = init_db()
 
-# 페이지 설정
 st.set_page_config(
     page_title="AIOps-Guard: 관세행정 오프라인 관제 시스템",
     page_icon="🛡️",
     layout="wide"
 )
 
-st.title("🛡️ AIOps-Guard: 관세행정 지능형 오프라인 관제 시스템")
+# 세션 상태 초기화 (챗봇 대화 및 팝업 제어용)
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if "selected_log_category" not in st.session_state:
+    st.session_state.selected_log_category = None
+
+st.title("🛡️ 통합 모니터링 대시보드")
 st.markdown("---")
 
-# 사이드바: 시스템 상태 표시
-st.sidebar.header("⚙️ 시스템 인프라 현황")
-st.sidebar.success("🟢 폐쇄망(On-Premise) 모드 활성화")
-st.sidebar.info("🤖 Local LLM: Gemma 9B (Ollama)")
-st.sidebar.warning("🔒 외부 인터넷 연결: 차단됨 (Offline)")
-st.sidebar.markdown("💾 **아키텍처:** 모듈화 적용 (`app.py`, `database.py`, `ai_engine.py`)")
-
-# 메인 지표 카드 섹션
+# 상단 지표 카드
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("실시간 수입신고 처리량", "1,420 TPS", "+12%")
-col2.metric("현재 시스템 에러율", "0.02%", "-0.01%")
-col3.metric("AI 이상 탐지 상태", "정상 (Normal)", "Stability 99.8%")
-col4.metric("AI 참모 응답 속도", "0.12초", "Local sLLM")
+col1.metric("💚 시스템 Health", "98점", "↑ 최상")
+col2.metric("💻 서버 CPU", "62%", "↓ -3%")
+col3.metric("📈 수입신고 처리건수", "2,458", "↑ 5%")
+col4.metric("📄 전자문서 송수신", "6,254", "↑ 2%")
 
-st.markdown("### 📊 실시간 트래픽 및 동적 임계치 모니터링")
-st.markdown("*(공식: 3시간 이동평균 + 2 × 표준편차 기반 동적 이상 징후 감지)*")
+st.markdown("### 🏢 관세행정 업무 처리 현황")
 
-# 시뮬레이션 데이터 생성 및 이동평균 계산
-np.random.seed(42)
-raw_data = np.random.randn(30) * 8 + 100
-df = pd.DataFrame({'TPS': raw_data})
-df['Rolling_Mean'] = df['TPS'].rolling(window=3, min_periods=1).mean()
-df['Rolling_Std'] = df['TPS'].rolling(window=3, min_periods=1).std().fillna(0)
-df['Dynamic_Threshold'] = df['Rolling_Mean'] + (2 * df['Rolling_Std'])
+# 업무 분류 데이터 (클릭 인터랙션을 위해 데이터프레임 또는 버튼 활용)
+work_data = [
+    {"업무 분류": "전자문서 수신", "처리 건수": "3,254", "상태": "🟢 정상"},
+    {"업무 분류": "수입신고서 처리", "처리 건수": "2,981", "상태": "🟢 정상"},
+    {"업무 분류": "사전검증 처리", "처리 건수": "1,876", "상태": "🟢 정상"},
+    {"업무 분류": "신고서 접수통보", "처리 건수": "1,203", "상태": "🟢 정상"},
+    {"업무 분류": "고지서 생성", "처리 건수": "987", "상태": "🟢 정상"},
+    {"업무 분류": "전산선별", "처리 건수": "856", "상태": "🟢 정상"},
+]
 
-st.line_chart(df[['TPS', 'Dynamic_Threshold']])
+# 표와 클릭 버튼 연동을 위한 UI 구성
+cols = st.columns([2, 1, 1])
+cols[0].markdown("**업무 분류**")
+cols[1].markdown("**처리 건수**")
+cols[2].markdown("**상태**")
+
+for row in work_data:
+    c1, c2, c3 = st.columns([2, 1, 1])
+    # 업무 분류를 버튼 형태로 만들어 클릭 시 WEB Log 팝업 호출
+    if c1.button(row["업무 분류"], key=f"btn_{row['업무 분류']}"):
+        st.session_state.selected_log_category = row["업무 분류"]
+    c2.text(row["처리 건수"])
+    c3.text(row["상태"])
+
+# 📌 WEB Log 상세 팝업 (두 번째 사진 구현)
+if st.session_state.selected_log_category:
+    @st.dialog(f"유니패스 WEB Log - [{st.session_state.selected_log_category}] 상세", width="large")
+    def show_web_log_popup(category):
+        st.markdown(f"### CSP WEB /log/ssw/httpsvr/csp/ssl_access_log")
+        log_df = get_web_logs(category)
+        st.dataframe(log_df, use_container_width=True)
+        if st.button("닫기"):
+            st.session_state.selected_log_category = None
+            st.rerun()
+
+    show_web_log_popup(st.session_state.selected_log_category)
 
 st.markdown("---")
 
-# AI 긴급 진단 및 조치 가이드 섹션
-st.markdown("### 🤖 Gemma 9B 오프라인 AI 참모 진단 리포트")
+# 🤖 우측 하단 고정형 AI Bot 플로팅 버튼 및 챗봇 팝업 구현
+st.markdown("""
+    <style>
+    /* 우측 하단 고정 버튼 스타일 */
+    .chat-bot-container {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 99999;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-if st.button("🚨 실시간 시스템 로그 AI 정밀 진단 실행 및 DB 기록"):
-    with st.spinner("로컬 Ollama(Gemma 9B)가 폐쇄망 환경에서 로그를 분석 중입니다..."):
-        
-        result = get_gemma_diagnosis()
-        
-        if result:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            # DB 모듈을 통해 안전하게 저장
-            save_diagnostic(conn, current_time, 1420.0, "Warning", result)
-            
-            st.success("✅ AI 진단 완료 및 로컬 DB 기록 저장 완료!")
-            st.markdown(f"> **[AI 진단 결과]**\n\n{result}")
-        else:
-            st.error("⚠️ 로컬 Ollama 서버 연결 실패: Ollama 백그라운드 실행 여부를 확인해 주세요!")
+# Streamlit popover를 활용한 AI Bot 챗봇 인터페이스 (화면 우측 하단 고정 효과)
+with st.popover("🤖 AI Bot"):
+    st.markdown("### 💬 Local Gemma 9B AI 어시스턴트")
+    st.caption("폐쇄망 내부망 전용 실시간 질의응답 챗봇")
+    
+    # 대화 이력 출력
+    chat_container = st.container(height=300)
+    with chat_container:
+        for role, message in st.session_state.chat_history:
+            if role == "user":
+                st.markdown(f"**나:** {message}")
+            else:
+                st.markdown(f"**AI 참모:** {message}")
 
-st.markdown("---")
-
-# 하단: 과거 AI 진단 이력 조회
-st.markdown("### 📜 과거 AI 진단 및 장애 대응 이력 (SQLite 저장소)")
-history_df = load_history(conn)
-
-if not history_df.empty:
-    st.dataframe(history_df, use_container_width=True)
-else:
-    st.info("아직 기록된 진단 이력이 없습니다. 위 버튼을 눌러 첫 번째 진단을 실행해 보세요!")
+    # 사용자 질의 입력창
+    user_input = st.text_input("AI에게 질문을 입력하세요...", key="ai_bot_input")
+    if st.button("전송", key="ai_bot_send"):
+        if user_input:
+            st.session_state.chat_history.append(("user", user_input))
+            with st.spinner("Gemma가 답변 생성 중..."):
+                ai_response = ask_ai_bot(user_input)
+                st.session_state.chat_history.append(("assistant", ai_response))
+            st.rerun()
