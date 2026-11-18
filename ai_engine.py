@@ -1,59 +1,41 @@
 import base64
 import json
 from datetime import datetime
+from google import genai
 import requests
 
-# 🌐 Groq 무료 클라우드 API 설정 (REST 직통 방식)
-GROQ_API_KEY = "Gsk_v9aQPjsahM76RVf0xku6WGdyb3FYRrga2xMv1IsLpnALtPypcm3V"
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+# 🌐 Google Gemini API 설정 (최신 google-genai SDK 방식)
+# 발급받으신 본인의 Gemini API 키를 큰따옴표 사이에 넣어주세요.
+GEMINI_API_KEY = "방금_복사한_실제_API키_입력"
 
-# 💡 확실하게 권한이 열려 있는 Groq 표준 정식 모델명으로 교체
-MODEL_NAME = "llama3-70b-8192"
+# 최신 SDK 클라이언트 초기화
+client = genai.Client(api_key=GEMINI_API_KEY)
+
+# 가장 빠르고 안정적인 최신 무료 모델
+MODEL_NAME = "gemini-2.5-flash"
 
 # 🦊 GitLab 연동 설정
 GITLAB_PROJECT_ID = "hbin0604-sudo%2FAI_Dashbord"
 GITLAB_TOKEN = "glpat-T3gHK_Vziu5qRtPgRXHd62M6MQpvOjEKdTpxajM4bw8.01.171lz2q2c"
 
 def ask_ai_bot(user_prompt):
-    """ Groq REST API를 직접 호출하여 인증 오류와 라이브러리 충돌을 원천 차단하는 참모 함수 """
-    if not GROQ_API_KEY:
-        return "⚠️ Groq API 키가 입력되지 않았습니다."
-    
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "model": MODEL_NAME,
-        "messages": [
-            {
-                "role": "system",
-                "content": "너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘."
-            },
-            {
-                "role": "user",
-                "content": user_prompt
-            }
-        ],
-        "temperature": 0.3
-    }
+    """ 최신 google-genai SDK를 사용한 인프라 참모 질의응답 함수 """
+    if not GEMINI_API_KEY or GEMINI_API_KEY == "방금_복사한_실제_API키_입력":
+        return "⚠️ Gemini API 키가 입력되지 않았습니다. ai_engine.py 파일의 GEMINI_API_KEY 변수에 키를 넣어주세요."
     
     try:
-        response = requests.post(GROQ_URL, json=payload, headers=headers, timeout=20)
-        res_data = response.json()
-        
-        # API 거부 에러 체크
-        if "error" in res_data:
-            err_msg = res_data["error"].get("message", "알 수 없는 API 에러")
-            return f"⚠️ Groq 인증/요청 거부됨: {err_msg}"
-            
-        # 응답 텍스트 추출
-        answer_text = res_data["choices"][0]["message"]["content"]
-        return answer_text
-        
+        # 시스템 지침(System Instruction)과 함께 콘텐츠 생성 요청
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=user_prompt,
+            config={
+                "system_instruction": "너는 관세청 오프라인/온프레미스 인프라 AI 수석 참모야. 간결하고 전문적으로 답변해줘.",
+                "temperature": 0.3,
+            }
+        )
+        return response.text
     except Exception as e:
-        return f"⚠️ Groq API 통신 오류: {e}"
+        return f"⚠️ Gemini API 통신 오류: {e}"
 
 def push_log_to_gitlab(event_name, ai_diagnosis_text):
     """ AI가 탐지한 침해사고 로그를 GitLab Repository에 자동 커밋하는 함수 """
