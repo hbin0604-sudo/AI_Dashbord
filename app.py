@@ -20,10 +20,10 @@ if "chat_history" not in st.session_state:
 if "selected_log_category" not in st.session_state:
     st.session_state.selected_log_category = None
 
-# 📌 우측 하단 고정형(Floating) AI Bot 버튼을 위한 전역 CSS 주입
+# 📌 우측 하단 동그란 노란색 플로팅 버튼 CSS 디자인 적용
 st.markdown("""
 <style>
-/* Streamlit Popover 버튼을 화면 우측 하단에 고정 */
+/* Streamlit Popover를 우측 하단에 동그란 버튼으로 고정 */
 div[data-testid="stPopover"] {
     position: fixed !important;
     bottom: 30px !important;
@@ -31,18 +31,28 @@ div[data-testid="stPopover"] {
     z-index: 999999 !important;
 }
 div[data-testid="stPopover"] > button {
-    background-color: #ffeb3b !important;
+    width: 65px !important;
+    height: 65px !important;
+    border-radius: 50% !important;
+    background-color: #FFD54F !important;
     color: #333333 !important;
-    border-radius: 50px !important;
     font-weight: bold !important;
-    box-shadow: 0px 4px 10px rgba(0,0,0,0.3) !important;
-    border: 2px solid #fbc02d !important;
-    padding: 10px 20px !important;
+    box-shadow: 0px 6px 15px rgba(0,0,0,0.3) !important;
+    border: 3px solid #FFC107 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0px !important;
+    font-size: 14px !important;
+}
+div[data-testid="stPopover"] > button:hover {
+    background-color: #FFC107 !important;
+    transform: scale(1.05);
 }
 </style>
 """, unsafe_allow_html=True)
 
-# 📌 사이드바 네비게이션 메뉴 (요청하신 4개 메뉴)
+# 📌 사이드바 네비게이션 메뉴 (4개 메뉴 고정)
 st.sidebar.header("🧭 관세청 AIOps 메뉴")
 menu = st.sidebar.radio(
     "이동할 메뉴를 선택하세요:",
@@ -65,7 +75,6 @@ if menu == "통합 모니터링 대시보드":
     st.title("🛡️ 통합 모니터링 대시보드")
     st.markdown("---")
 
-    # 상단 지표 카드
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("💚 시스템 Health", "98점", "↑ 최상")
     col2.metric("💻 서버 CPU", "62%", "↓ -3%")
@@ -108,7 +117,6 @@ if menu == "통합 모니터링 대시보드":
         )
         st.line_chart(chart_data)
 
-    # WEB Log 상세 팝업 모달
     if st.session_state.selected_log_category:
         @st.dialog(f"유니패스 WEB Log - [{st.session_state.selected_log_category}] 상세", width="large")
         def show_web_log_popup(category):
@@ -157,7 +165,7 @@ elif menu == "관세행정업무량":
     st.bar_chart(time_data)
 
 # ==========================================
-# 4. AI 실시간 진단 챗봇 메뉴 (별도 탭)
+# 4. AI 실시간 진단 챗봇 메뉴
 # ==========================================
 elif menu == "AI 실시간 진단 챗봇":
     st.title("🤖 AI 실시간 진단 챗봇 (Gemma 9B)")
@@ -187,11 +195,11 @@ elif menu == "AI 실시간 진단 챗봇":
 
 
 # ==========================================
-# 🤖 우측 하단 고정형 AI Bot 플로팅 챗봇 팝업 (모든 화면 공통)
+# 🤖 우측 하단 동그란 노란색 AI Bot 플로팅 버튼 팝업
 # ==========================================
-with st.popover("🤖 AI Bot"):
+with st.popover("🤖 Bot"):
     st.markdown("### 💬 Local Gemma 9B 빠른 챗봇")
-    st.caption("어디서나 호출 가능한 폐쇄망 실시간 참모")
+    st.caption("폐쇄망 실시간 인프라 참모")
     
     floating_chat_box = st.container(height=280)
     with floating_chat_box:
@@ -203,7 +211,6 @@ with st.popover("🤖 AI Bot"):
             else:
                 st.markdown(f"**AI:** {msg}")
 
-    # 팝업 내 입력창
     float_input = st.text_input("빠른 질문 입력...", key="floating_bot_input")
     if st.button("보내기", key="floating_bot_send"):
         if float_input:
