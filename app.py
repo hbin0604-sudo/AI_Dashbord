@@ -20,37 +20,36 @@ if "chat_history" not in st.session_state:
 if "selected_log_category" not in st.session_state:
     st.session_state.selected_log_category = None
 
-# 📌 우측 하단 동그란 노란색 플로팅 버튼 강제 고정 CSS
+# 📌 우측 하단 동그란 노란색 플로팅 버튼 강제 고정 CSS (바 형태 방지)
 st.markdown("""
 <style>
-/* Streamlit Popover 컨테이너를 화면 우측 하단에 완전히 고정 */
-div[data-testid="stPopover"] {
+/* 팝업 컨테이너 자체를 우측 하단에 고정 */
+[data-testid="stPopover"] {
     position: fixed !important;
     bottom: 30px !important;
     right: 30px !important;
     z-index: 999999 !important;
 }
 
-/* 팝업 트리거 버튼을 완벽한 동그란 노란색 버튼으로 성형 */
-div[data-testid="stPopover"] > button {
-    width: 60px !important;
-    height: 60px !important;
-    min-height: 60px !important;
-    max-height: 60px !important;
+/* 내부 버튼을 찌그러짐 없이 완벽한 동그란 노란색 버튼으로 성형 */
+[data-testid="stPopover"] > button {
+    width: 65px !important;
+    height: 65px !important;
+    min-height: 65px !important;
+    max-height: 65px !important;
     border-radius: 50% !important;
     background-color: #FFD54F !important;
     color: #333333 !important;
-    font-weight: bold !important;
     box-shadow: 0px 6px 20px rgba(0,0,0,0.35) !important;
     border: 3px solid #FFC107 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     padding: 0px !important;
-    font-size: 16px !important;
+    font-size: 22px !important;
 }
 
-div[data-testid="stPopover"] > button:hover {
+[data-testid="stPopover"] > button:hover {
     background-color: #FFC107 !important;
     transform: scale(1.08);
 }
