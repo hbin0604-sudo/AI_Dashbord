@@ -8,13 +8,12 @@ CLOUD_AI_URL = "https://api.openai.com/v1/chat/completions"
 CLOUD_AI_KEY = "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"
 MODEL_NAME = "gpt-4o-mini"
 
-# 🦊 GitLab 연동 설정 (사용자님의 GitLab 계정 및 레포지토리 정보 반영)
-# GitLab 프로젝트 경로를 URL 인코딩한 값 ("hbin0604-sudo/AI_Dashbord" -> "hbin0604-sudo%2FAI_Dashbord")
+# 🦊 GitLab 연동 설정
 GITLAB_PROJECT_ID = "hbin0604-sudo%2FAI_Dashbord"
 GITLAB_TOKEN = "glpat-T3gHK_Vziu5qRtPgRXHd62M6MQpvOjEKdTpxajM4bw8.01.171lz2q2c"
 
 def ask_ai_bot(user_prompt):
-    """ 인터넷망을 통한 초고속 클라우드 AI 질의응답 (choices 파싱 오류 해결) """
+    """ 인터넷망을 통한 초고속 클라우드 AI 질의응답 (상세 에러 처리 포함) """
     headers = {
         "Authorization": f"Bearer {CLOUD_AI_KEY}",
         "Content-Type": "application/json"
@@ -30,13 +29,18 @@ def ask_ai_bot(user_prompt):
     try:
         response = requests.post(CLOUD_AI_URL, json=payload, headers=headers, timeout=15)
         res_data = response.json()
-        # 'choices' 리스트 구조에 맞게 올바르게 파싱하도록 수정 완료
+        
+        # 💡 OpenAI가 에러 응답을 보낸 경우, 그 원인 메시지를 정확히 추출해서 리턴
+        if "error" in res_data:
+            err_detail = res_data["error"].get("message", "알 수 없는 에러")
+            return f"⚠️ OpenAI API 거부됨: {err_detail}"
+            
         return res_data["choices"][0]["message"]["content"]
     except Exception as e:
         return f"⚠️ 클라우드 AI API 통신 오류: {e}"
 
 def push_log_to_gitlab(event_name, ai_diagnosis_text):
-    """ AI가 탐지한 침해사고 로그를 GitLab Repository(gitlib.com API)에 자동 커밋하는 함수 """
+    """ AI가 탐지한 침해사고 로그를 GitLab Repository에 자동 커밋하는 함수 """
     timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     file_path = f"logs/ai_detect_{timestamp_str}.json"
     
@@ -50,7 +54,6 @@ def push_log_to_gitlab(event_name, ai_diagnosis_text):
     json_bytes = json.dumps(log_data, ensure_ascii=False, indent=4).encode("utf-8")
     base64_content = base64.b64encode(json_bytes).decode("utf-8")
 
-    # 🦊 GitLab 공식 Repository Files API 규격 (gitlab.com)
     url = f"https://gitlab.com/api/v4/projects/{GITLAB_PROJECT_ID}/repository/files/{file_path}"
     headers = {
         "PRIVATE-TOKEN": GITLAB_TOKEN,
@@ -73,5 +76,4 @@ def push_log_to_gitlab(event_name, ai_diagnosis_text):
     except Exception as e:
         return f"⚠️ GitLab API 통신 오류: {e}"
 
-# 하위 호환성을 위한 별칭 (app.py 수정 불필요)
 push_log_to_github = push_log_to_gitlab
