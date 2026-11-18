@@ -20,27 +20,19 @@ if "chat_history" not in st.session_state:
 if "selected_log_category" not in st.session_state:
     st.session_state.selected_log_category = None
 
-# 📌 [핵심] 우측 하단 맨 밑에 동그란 노란색 버튼으로 강제 고정하는 정밀 CSS
+# 📌 [핵심 보정] 어떤 메뉴를 가더라도 브라우저 우측 하단에 둥둥 떠 있도록 완벽 고정하는 CSS
 st.markdown("""
 <style>
-/* 1. 팝업을 담고 있는 컨테이너를 화면 우측 하단(Bottom: 30px, Right: 30px)에 절대 고정 */
-div.element-container:has([data-testid="stPopover"]) {
+/* Streamlit Popover 전체를 브라우저 뷰포트 우측 하단에 절대 고정 */
+[data-testid="stPopover"] {
     position: fixed !important;
     bottom: 30px !important;
     right: 30px !important;
-    top: auto !important;
-    left: auto !important;
-    z-index: 999999 !important;
-    margin: 0 !important;
+    z-index: 9999999 !important;
 }
 
-[data-testid="stPopover"] {
-    position: static !important;
-}
-
-/* 2. 버튼을 완벽한 동그란 노란색 원형 버튼으로 성형 */
-[data-testid="stPopover"] > button,
-[data-testid="stPopover"] button {
+/* 버튼을 예쁜 동그란 노란색 원형 버튼으로 고정 ("AI 챗봇" 텍스트 포함) */
+[data-testid="stPopover"] > button {
     width: 65px !important;
     height: 65px !important;
     min-width: 65px !important;
@@ -70,7 +62,7 @@ div.element-container:has([data-testid="stPopover"]) {
 </style>
 """, unsafe_allow_html=True)
 
-# 📌 사이드바 네비게이션 메뉴 (3개 메뉴 고정)
+# 📌 사이드바 네비게이션 메뉴 (요청하신 3개 메뉴 고정)
 st.sidebar.header("🧭 관세청 AIOps 메뉴")
 menu = st.sidebar.radio(
     "이동할 메뉴를 선택하세요:",
@@ -183,7 +175,7 @@ elif menu == "관세행정 서비스 품질":
 
 
 # ==========================================
-# 🤖 우측 하단 동그란 노란색 "AI\n챗봇" 플로팅 버튼 팝업 (모든 화면 공통)
+# 🤖 우측 하단 동그란 노란색 "AI 챗봇" 플로팅 버튼 팝업 (모든 화면 공통 전역 배치)
 # ==========================================
 with st.popover("AI\n챗봇"):
     st.markdown("### 💬 Local qwen2.5:3b 챗봇")
