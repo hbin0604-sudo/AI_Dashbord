@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 
 from database import init_db, save_diagnostic, load_history, get_web_logs
-from ai_engine import get_gemma_diagnosis, ask_ai_bot
+from ai_engine import ask_ai_bot, push_log_to_github
 
 conn = init_db()
 
@@ -20,10 +20,9 @@ if "chat_history" not in st.session_state:
 if "selected_log_category" not in st.session_state:
     st.session_state.selected_log_category = None
 
-# 📌 [결정적 해결] Streamlit Popover를 완벽한 우측 하단 동그란 노란색 원형 버튼으로 고정하는 CSS
+# 📌 우측 하단 동그란 노란색 원형 버튼 고정 CSS 스타일링
 st.markdown("""
 <style>
-/* 1. 화면 전체를 기준으로 우측 하단(30px, 30px)에 절대 고정 */
 div[data-testid="stPopover"] {
     position: fixed !important;
     bottom: 30px !important;
@@ -40,7 +39,6 @@ div[data-testid="stPopover"] > div {
     max-width: none !important;
 }
 
-/* 2. 바 형태를 강제로 부수고 완벽한 동그란 노란색 버튼으로 성형 */
 div[data-testid="stPopover"] > button,
 div[data-testid="stPopover"] button {
     width: 70px !important;
@@ -186,13 +184,13 @@ elif menu == "관세행정 서비스 품질":
 
 
 # ==========================================
-# 🤖 우측 하단 동그란 노란색 "AI 챗봇" 플로팅 버튼 팝업 (모든 화면 공통)
+# 🤖 우측 하단 동그란 노란색 "AI 챗봇" 플로팅 버튼 팝업 (GitHub 연동 기능 포함)
 # ==========================================
 with st.popover("AI\n챗봇"):
     st.markdown("### 💬 Local qwen2.5:3b 챗봇")
     st.caption("어디서나 호출 가능한 실시간 인프라 참모")
     
-    floating_chat_box = st.container(height=260)
+    floating_chat_box = st.container(height=210)
     with floating_chat_box:
         if not st.session_state.chat_history:
             st.info("궁금한 점을 바로 물어보세요!")
@@ -210,3 +208,10 @@ with st.popover("AI\n챗봇"):
                 reply = ask_ai_bot(float_input)
                 st.session_state.chat_history.append(("assistant", reply))
             st.rerun()
+
+    st.markdown("---")
+    if st.button("🚀 탐지 로그 GitHub 백업"):
+        with st.spinner("GitHub 레포지토리에 로그 기록 중..."):
+            last_msg = st.session_state.chat_history[-1][1] if st.session_state.chat_history else "초기 시스템 정상 가동 상태"
+            res_msg = push_log_to_github("AIOps 수동 진단 및 챗봇 로그 백업", last_msg)
+            st.info(res_msg)
