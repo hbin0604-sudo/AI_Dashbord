@@ -210,4 +210,17 @@ with st.popover("🤖"):
     with floating_chat_box:
         if not st.session_state.chat_history:
             st.info("궁금한 점을 바로 물어보세요!")
-        for role
+        for role, msg in st.session_state.chat_history:
+            if role == "user":
+                st.markdown(f"**나:** {msg}")
+            else:
+                st.markdown(f"**AI:** {msg}")
+
+    float_input = st.text_input("빠른 질문 입력...", key="floating_bot_input")
+    if st.button("보내기", key="floating_bot_send"):
+        if float_input:
+            st.session_state.chat_history.append(("user", float_input))
+            with st.spinner("생성 중..."):
+                reply = ask_ai_bot(float_input)
+                st.session_state.chat_history.append(("assistant", reply))
+            st.rerun()
