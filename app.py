@@ -1,4 +1,4 @@
-"""전자통관 AI 관제시스템 — 토스 컬러 팔레트 기반 통합 인프라·보안·AP 품질 관제."""
+"""AI Dashboard — 전자통관 AI 관제시스템 (다중 서버팜 30대 · 관세행정 서비스품질 · 토스 디자인 시스템)."""
 import html
 import json
 import time
@@ -27,6 +27,15 @@ def workers():
 
 pool, report_jobs, job_lock = workers()
 s = st.session_state
+
+# 기존 세션 메뉴 호환 처리
+if s.get('menu') in ('한눈에 보기', 'AI대시보드'):
+    s['menu'] = 'AI 대시보드'
+elif s.get('menu') == '서버 상태':
+    s['menu'] = '인프라 관리'
+elif s.get('menu') == '관세행정 서비스 품질':
+    s['menu'] = '관세행정 서비스품질'
+
 for key, value in {
     'menu': 'AI 대시보드', 'running': False, 'active_scenarios': [],
     'generation': 0, 'tick': 0, 'samples': [], 'snapshot': db.make_snapshot([]),
@@ -37,20 +46,10 @@ for key, value in {
     'integration_future': None, 'integration_result': '', 'repo_data': None,
     'repo_text': '', 'repo_future': None, 'repo_error': '', 'interval': AI_ANALYSIS_INTERVAL_SECONDS,
     'show_action': False, 'booted': False, 'chart_choice': '응답 시간',
-    'selected_farm': '전체 서버팜',
+    'farm_filter': '전체 서버팜', 'tier_filter': '전체 계층',
 }.items():
     if key not in s:
         s[key] = value
-
-# 이전 세션 메뉴명 호환 처리
-menu_migration = {
-    '한눈에 보기': 'AI 대시보드',
-    'AI대시보드': 'AI 대시보드',
-    '서버 상태': '인프라 관리',
-    '관세행정 서비스 품질': '관세행정 서비스품질',
-}
-if s.menu in menu_migration:
-    s.menu = menu_migration[s.menu]
 
 if not s.booted:
     existing = next((e for e in db.list_events() if e['status'] == 'OPEN'), None)
@@ -91,7 +90,6 @@ ICON_PATHS = {
     'spark': '<path d="m12 2 2.8 7.2L22 12l-7.2 2.8L12 22l-2.8-7.2L2 12l7.2-2.8Z"/>',
     'play': '<path d="m8 4 12 8-12 8Z"/>',
     'pause': '<path d="M8 4v16M16 4v16"/>',
-    'flask': '<path d="M9 3h6m-5 0v6L4 19a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2L14 9V3M7 15h10"/>',
     'refresh': '<path d="M20 7V2m0 5h-5M4 17v5m0-5h5M20 7a9 9 0 0 0-16 2m0 8a9 9 0 0 0 16-2"/>',
     'check': '<circle cx="12" cy="12" r="9"/><path d="m7 12 3 3 7-7"/>',
     'close': '<path d="m6 6 12 12M18 6 6 18"/>',
@@ -109,122 +107,116 @@ def icon_svg(name, color='currentColor', size=24):
 def button_icon_css(key, name):
     uri = 'data:image/svg+xml,' + quote(icon_svg(name, '#000000'), safe='')
     return (f'.st-key-{key} button::before {{content:"";display:inline-block;'
-            f'width:20px;height:20px;flex:0 0 20px;margin-right:8px;background:currentColor;'
+            f'width:19px;height:19px;flex:0 0 19px;margin-right:8px;background:currentColor;'
             f'-webkit-mask:url("{uri}") center/contain no-repeat;'
             f'mask:url("{uri}") center/contain no-repeat;}}')
 
 
-# 토스(Toss) 디자인 시스템 컬러 팔레트 (위험=빨강, 주의=주황 반영)
+# 토스(Toss) 디자인 시스템 컬러 팔레트: 절제된 그레이 스케일 + 토스 블루 포인트
 markup('''<style>
 :root {
     --blue:#3182f6;
+    --blue-bg:#e8f3ff;
     --blue-dark:#1b64da;
-    --blue-soft:#e8f3ff;
     --ink:#191f28;
     --ink-sub:#4e5968;
     --muted:#8b95a1;
-    --border:#e5e8eb;
     --bg:#f2f4f6;
+    --card:#ffffff;
+    --border:#e5e8eb;
     --red:#f04452;
-    --red-soft:#ffeeee;
-    --orange:#f57c00;
-    --orange-soft:#fff4e5;
+    --red-bg:#ffeeee;
     --green:#03b26c;
-    --green-soft:#e8f7f0;
+    --green-bg:#e6f9f0;
+    --orange:#f57c00;
+    --orange-bg:#fff4e5;
 }
 .stApp {background:var(--bg);color:var(--ink);font-family:"Pretendard","Malgun Gothic",sans-serif}
 [data-testid="stHeader"] {background:transparent}
-.block-container {padding:1.8rem 2rem 5rem;max-width:1800px}
+.block-container {padding:1.1rem 1.8rem 3.5rem;max-width:1800px}
 h1,h2,h3,p,label {color:var(--ink)}
-h1 {font-size:2.35rem!important;font-weight:800!important;letter-spacing:-1.2px}
+h1 {font-size:2.1rem!important;font-weight:800!important;letter-spacing:-1.2px;margin:0!important;padding:0!important}
 button, input, textarea {font-family:inherit!important}
-[data-testid="stButton"] button,[data-testid="stFormSubmitButton"] button {border-radius:12px;min-height:44px;font-weight:700;border:1px solid var(--border);color:var(--ink);background:white;transition:all .15s ease}
+[data-testid="stButton"] button,[data-testid="stFormSubmitButton"] button {border-radius:12px;min-height:42px;font-weight:700;border:1px solid var(--border);color:var(--ink);background:white;transition:all .15s ease}
 [data-testid="stButton"] button[kind="primary"],[data-testid="stFormSubmitButton"] button[kind="primary"] {background:var(--blue);color:white;border-color:var(--blue)}
 [data-testid="stButton"] button:hover {border-color:var(--blue);color:var(--blue);background:#f9fafb}
 [data-testid="stButton"] button[kind="primary"]:hover {color:white;background:var(--blue-dark)}
-[data-testid="stSidebar"] {background:white;border-right:1px solid var(--border);min-width:265px;max-width:295px}
+[data-testid="stSidebar"] {background:white;border-right:1px solid var(--border);min-width:255px;max-width:280px}
 [data-testid="stSidebar"] p,[data-testid="stSidebar"] span {color:var(--ink)}
-[data-testid="stSidebar"] button {border:0;background:white;text-align:left;justify-content:flex-start;min-height:50px}
+[data-testid="stSidebar"] button {border:0;background:white;text-align:left;justify-content:flex-start;min-height:48px}
 [data-testid="stSidebar"] button p {font-size:17px;font-weight:700;color:var(--ink-sub)}
-[data-testid="stSidebar"] button[kind="primary"] {background:var(--blue-soft)!important;color:var(--blue)!important}
+[data-testid="stSidebar"] button[kind="primary"] {background:var(--blue-bg)!important;color:var(--blue)!important}
 [data-testid="stSidebar"] button[kind="primary"] p {color:var(--blue)!important}
-[data-testid="stSidebar"] button:hover {background:var(--bg)}
+[data-testid="stSidebar"] button:hover {background:#f2f4f6}
 .st-key-bottom_nav {padding-top:12vh;border-top:0}
-.brand-box {display:flex;align-items:center;gap:9px;margin:6px 0 6px}
-.brand-icon svg {display:block}
-.brand-icon {display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;flex:0 0 32px;background:var(--blue);color:white!important;border-radius:10px}
-.brand-title {font-size:16.5px;font-weight:800;line-height:1.2;letter-spacing:-.6px;color:var(--ink);white-space:nowrap}
-.brand-sub {font-size:12px;line-height:1.45;color:var(--muted);margin-bottom:22px;font-weight:600}
-.head {display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px}
+.brand {font-size:19.5px;font-weight:800;letter-spacing:-0.8px;margin:6px 0 4px;display:flex;align-items:center;white-space:nowrap}
+.brand-icon svg {display:block}.brand-icon {display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--blue);color:white!important;border-radius:10px;margin-right:8px;flex-shrink:0}
+.brand-sub {font-size:11.5px;color:var(--muted);margin-bottom:24px;font-weight:600}
+.head {display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px}
 .head h1 {margin:0;padding:0}
-.badge-group {display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.badge {font-size:12px;font-weight:700;border-radius:20px;background:white;border:1px solid var(--border);color:var(--ink-sub);padding:6px 13px;white-space:nowrap}
-.badge.ai {background:var(--blue-soft);border-color:transparent;color:var(--blue)}
-.kpi {background:white;border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 2px 10px rgba(25,31,40,.03);min-height:118px}
-.kpi-label {font-size:14px;font-weight:700;color:var(--ink-sub);margin-bottom:8px;display:flex;align-items:center}
+.kpi {background:white;border:1px solid var(--border);border-radius:16px;padding:15px 18px;box-shadow:0 2px 10px rgba(25,31,40,.03);min-height:102px}
+.kpi-label {font-size:13.5px;font-weight:700;color:var(--ink-sub);margin-bottom:6px;display:flex;align-items:center}
 .kpi-icon {display:inline-flex;align-items:center;color:var(--blue);margin-right:8px}.kpi-icon.error {color:var(--red)}.kpi-icon.warn {color:var(--orange)}
-.kpi-value {font-size:clamp(24px,2.3vw,34px);font-weight:800;line-height:1.15;letter-spacing:-0.8px;color:var(--ink)}
-.kpi-sub {font-size:12px;color:var(--muted);margin-top:6px;font-weight:500}
-.ai-banner {display:flex;gap:16px;align-items:center;border-radius:18px;padding:20px 24px;background:var(--blue);color:white;margin:18px 0;font-size:clamp(18px,1.7vw,24px);font-weight:750;min-height:80px}
-.ai-banner small {display:block;font-size:13px;font-weight:400;opacity:.92;margin-top:4px}
-.ai-banner.idle {background:var(--blue-soft);color:var(--blue-dark)}
-.ai-banner.danger {background:var(--red-soft);color:var(--red);border:1px solid #ffd8dc}
-.spinner {width:26px;height:26px;border:4px dotted currentColor;border-radius:50%;animation:spin 1.2s linear infinite;flex-shrink:0}
+.kpi-value {font-size:clamp(22px,2.1vw,30px);font-weight:800;line-height:1.15;letter-spacing:-0.8px;color:var(--ink)}
+.kpi-sub {font-size:11.5px;color:var(--muted);margin-top:4px;font-weight:500}
+.farm-grid {display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:12px 0}
+.farm-card {background:white;border:1px solid var(--border);border-radius:18px;padding:18px 20px;box-shadow:0 2px 10px rgba(25,31,40,.03)}
+.farm-head {display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.farm-name {font-weight:800;font-size:17px;color:var(--ink)}
+.farm-sub {font-size:12px;color:var(--muted);margin-bottom:12px;font-weight:500}
+.pill {font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;display:inline-block}
+.pill-ok {background:var(--green-bg);color:var(--green)}
+.pill-warn {background:var(--orange-bg);color:var(--orange)}
+.pill-crit {background:var(--red-bg);color:var(--red)}
+.farm-metrics {display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:#f9fafb;border-radius:12px;padding:10px 12px;text-align:center}
+.farm-metrics span {display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+.farm-metrics strong {font-size:15px;font-weight:800;color:var(--ink)}
+.ai-banner {display:flex;gap:14px;align-items:center;border-radius:16px;padding:14px 20px;background:var(--blue);color:white;margin:12px 0;font-size:clamp(16px,1.5vw,21px);font-weight:750;min-height:64px}
+.ai-banner small {display:block;font-size:12.5px;font-weight:400;opacity:.92;margin-top:2px}
+.ai-banner.idle {background:var(--blue-bg);color:var(--blue-dark)}
+.ai-banner.danger {background:var(--red-bg);color:var(--red);border:1px solid #ffd6da}
+.spinner {width:24px;height:24px;border:3px dotted currentColor;border-radius:50%;animation:spin 1.2s linear infinite;flex-shrink:0}
 @keyframes spin {to{transform:rotate(360deg)}}
 [data-testid="stVerticalBlockBorderWrapper"]>div {border-radius:18px!important;border-color:var(--border)!important;background:white;box-shadow:0 2px 10px rgba(25,31,40,.02)}
-.summary-title {font-size:19px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px;color:var(--ink)}
-.summary-row {font-size:14px;line-height:1.6;padding:11px 0;border-bottom:1px solid var(--bg);overflow-wrap:anywhere;color:var(--ink-sub)}
+.summary-title {font-size:18px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:8px;color:var(--ink)}
+.summary-row {font-size:13.5px;line-height:1.55;padding:9px 0;border-bottom:1px solid var(--bg);overflow-wrap:anywhere;color:var(--ink-sub)}
 .summary-row:last-child {border:0}
-.summary-meta {color:var(--muted);font-size:12px;margin-top:12px}
-.event-strip {background:white;border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin-top:16px;font-size:14px;color:var(--ink-sub)}
-/* 서버팜 요약 카드 */
-.farm-card {background:white;border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 2px 10px rgba(25,31,40,.03)}
-.farm-header {display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.farm-title {font-size:18px;font-weight:800;color:var(--ink)}
-.farm-badge {font-size:12px;font-weight:700;padding:4px 10px;border-radius:12px}
-.fb-ok {background:var(--green-soft);color:var(--green)}
-.fb-warn {background:var(--orange-soft);color:var(--orange)}
-.fb-crit {background:var(--red-soft);color:var(--red)}
-.farm-spec {font-size:13px;color:var(--muted);margin-bottom:14px;font-weight:600}
-.bar-wrap {margin-bottom:11px}
-.bar-label {display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--ink-sub);margin-bottom:5px}
-.bar-track {width:100%;height:8px;background:var(--bg);border-radius:99px;overflow:hidden}
-.bar-fill {height:100%;border-radius:99px;background:var(--blue)}
-.bar-fill.warn {background:var(--orange)}
-.bar-fill.crit {background:var(--red)}
-/* 관세행정 서비스품질 카드 */
-.svc-grid {display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:14px 0 18px}
-.svc-card {background:white;border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(25,31,40,.02)}
-.svc-top {display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.svc-name {font-size:15px;font-weight:800;color:var(--ink)}
-.svc-code {font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600}
-.svc-val {font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-0.5px}
-.svc-sub {font-size:12px;color:var(--ink-sub);margin-top:4px}
-/* AI 운영 도우미 플로팅 패널 */
-.st-key-chat_launcher {position:fixed;right:28px;bottom:25px;width:230px;z-index:90}
-.st-key-chat_launcher button {background:var(--blue)!important;color:white!important;border:0!important;border-radius:30px!important;box-shadow:0 8px 24px rgba(49,130,246,.28);min-height:54px!important}
+.summary-meta {color:var(--muted);font-size:11.5px;margin-top:10px}
+.event-strip {background:white;border:1px solid var(--border);border-radius:14px;padding:12px 18px;margin-top:14px;font-size:13.5px;color:var(--ink-sub)}
+.param-bar-wrap {margin-bottom:10px}
+.param-bar-top {display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;color:var(--ink-sub);margin-bottom:4px}
+.param-bar-track {width:100%;height:7px;background:var(--bg);border-radius:99px;overflow:hidden}
+.param-bar-fill {height:100%;border-radius:99px;transition:width .3s ease}
+
+/* AI 운영 도우미 플로팅 런처 및 사이드 패널 (Deploy 버튼과 겹치지 않도록 상단 여백 54px 확보) */
+.st-key-chat_launcher {position:fixed;right:28px;bottom:25px;width:220px;z-index:90}
+.st-key-chat_launcher button {background:var(--blue)!important;color:white!important;border:0!important;border-radius:30px!important;box-shadow:0 8px 24px rgba(49,130,246,.35);min-height:52px!important}
 .st-key-chat_launcher button p {color:white;font-size:17px;font-weight:700}
-.st-key-chat_panel {position:fixed;top:0;right:0;bottom:0;width:420px;background:white;padding:54px 22px 24px;z-index:999990;box-shadow:-8px 0 30px rgba(25,31,40,.08);border-left:1px solid var(--border);overflow-y:auto}
-.chat-empty {text-align:center;padding:28px 0 16px}
-.chat-symbol {font-size:54px;color:var(--blue)}
-.chat-empty h3 {font-size:22px!important;margin:12px 0;color:var(--ink)}
-.chat-title {font-size:22px;font-weight:800;margin:0 0 12px;color:var(--ink)}
+.st-key-chat_panel {
+    position:fixed;top:0;right:0;bottom:0;width:410px;background:white;
+    padding:58px 22px 24px 22px;z-index:999;
+    box-shadow:-8px 0 30px rgba(25,31,40,.08);border-left:1px solid var(--border);overflow-y:auto
+}
+.chat-empty {text-align:center;padding:24px 0 16px}
+.chat-symbol {font-size:52px;color:var(--blue)}
+.chat-empty h3 {font-size:21px!important;margin:10px 0;color:var(--ink)}
+.chat-title {font-size:21px;font-weight:800;margin:0 0 10px;color:var(--ink)}
 .st-key-chat_panel [data-testid="stForm"] {border:0;padding:8px 0}
-.st-key-chat_panel textarea {background:var(--bg);border-radius:12px}
+.st-key-chat_panel textarea {background:#f9fafb;border-radius:12px}
 .st-key-chat_panel [data-testid="stChatMessage"] {font-size:14px}
-.dialog-heading {text-align:center;font-size:28px;font-weight:800;letter-spacing:-1px;margin:8px 0 4px}
-.dialog-symbol {text-align:center;font-size:44px;font-weight:600}
-.dialog-sub {text-align:center;color:var(--muted);margin-bottom:20px;font-size:14px}
-.dialog-metrics {display:flex;justify-content:space-around;text-align:center;margin:18px 0}
-.dialog-metrics span {display:block;font-size:13px;color:var(--muted)}
-.dialog-metrics strong {font-size:24px}
-.dialog-box {background:var(--bg);border-radius:14px;padding:16px;margin:14px 0;line-height:1.65;font-size:14px}
-@media(max-width:1200px){.svc-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:1100px){.block-container {padding:1.5rem 1rem 5rem}}
-@media(max-width:700px){.st-key-chat_panel{width:94vw}.svc-grid{grid-template-columns:1fr}}
+
+.dialog-heading {text-align:center;font-size:26px;font-weight:800;letter-spacing:-1px;margin:8px 0 4px}
+.dialog-symbol {text-align:center;font-size:42px;font-weight:600}
+.dialog-sub {text-align:center;color:var(--muted);margin-bottom:18px;font-size:14px}
+.dialog-metrics {display:flex;justify-content:space-around;text-align:center;margin:16px 0}
+.dialog-metrics span {display:block;font-size:12.5px;color:var(--muted)}
+.dialog-metrics strong {font-size:22px;color:var(--ink)}
+.dialog-box {background:#f9fafb;border-radius:14px;padding:15px;margin:12px 0;line-height:1.65;font-size:13.5px;color:var(--ink-sub)}
+@media(max-width:1100px){.block-container {padding:1.2rem 1rem 4rem}.farm-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.st-key-chat_panel{width:94vw}}
 </style>''')
 if s.chat_open:
-    markup('''<style>@media(min-width:1450px){[data-testid="stMain"] {margin-right:420px}} .st-key-chat_launcher{display:none}</style>''')
+    markup('''<style>@media(min-width:1450px){[data-testid="stMain"] {margin-right:410px}} .st-key-chat_launcher{display:none}</style>''')
 
 
 def set_scenarios(scenario_list):
@@ -254,15 +246,19 @@ def submit_report(event_id):
             report_jobs[event_id] = future
         s.report_future = future
         s.report_event = event_id
-        s.report_notice = 'AI가 보고서를 작성하고 GitLab에 저장하고 있어요…'
+        s.report_notice = 'AI 보고서를 작성하고 GitLab에 저장하고 있어요…'
 
 
 def ask(question):
     if s.chat_future is not None:
         return
-    context = {'latest_sample': ai.compact_snapshot(s.snapshot), 'last_assessment': s.assessment,
-               'assessment_time': s.assessed_at, 'recent_messages': s.chat_history[-6:]}
-    prompt = ('당신은 전자통관 인프라·보안·AP 품질관리 통합관제 도우미입니다. '
+    context = {
+        'latest_sample': ai.compact_snapshot(s.snapshot),
+        'last_assessment': s.assessment,
+        'assessment_time': s.assessed_at,
+        'recent_messages': s.chat_history[-6:]
+    }
+    prompt = ('당신은 전자통관 인프라·보안·AP 품질 관제 도우미입니다. '
               '관측과 추정을 구분하고 실제 조치가 실행됐다고 단정하지 마세요. 한국어로 간결하게 답하세요.\n'
               + json.dumps(context, ensure_ascii=False) + '\n질문: ' + question)
     s.chat_history.append(('user', question))
@@ -270,26 +266,20 @@ def ask(question):
 
 
 icon_buttons = {
-    'nav_overview': 'home', 'nav_servers': 'server', 'nav_customs': 'service',
+    'nav_overview': 'home', 'nav_infra': 'server', 'nav_customs': 'service',
     'nav_alerts': 'bell', 'nav_reports': 'report',
     'run_toggle': 'pause' if s.running else 'play',
     'restore': 'refresh', 'open_chat': 'chat', 'close_chat': 'close',
 }
 markup('<style>' + ''.join(button_icon_css(key, icon) for key, icon in icon_buttons.items()) +
-       '.st-key-close_chat button {min-width:38px;padding:8px}.st-key-close_chat button p {display:none}'
+       '.st-key-close_chat button {min-width:38px;min-height:38px;padding:6px}.st-key-close_chat button p {display:none}'
        '.st-key-close_chat button::before {margin:0}' + '</style>')
 
 with st.sidebar:
-    markup(
-        '<div class="brand-box">'
-        '<span class="brand-icon">' + icon_svg('server', 'white', 20) + '</span>'
-        '<div class="brand-title">전자통관 AI 관제시스템</div>'
-        '</div>'
-        '<div class="brand-sub">인프라·보안·AP 품질관리 통합관제</div>'
-    )
+    markup('<div class="brand"><span class="brand-icon">' + icon_svg('server', 'white', 20) + '</span>전자통관 AI 관제시스템</div><div class="brand-sub">인프라·보안·AP 품질관리 통합관제</div>')
     for item, nav_key in [
         ('AI 대시보드', 'overview'),
-        ('인프라 관리', 'servers'),
+        ('인프라 관리', 'infra'),
         ('관세행정 서비스품질', 'customs'),
         ('알림 기록', 'alerts')
     ]:
@@ -304,7 +294,7 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-    st.caption('LLM · 저장소 연동 점검')
+    st.caption('추론 엔진 및 저장소 상태 점검')
     if st.button('LLM · GitLab 연결 테스트', use_container_width=True, disabled=s.integration_future is not None):
         def _run_checks():
             a_res = ai.check_ai()
@@ -319,7 +309,7 @@ with st.sidebar:
 
 
 def render_controls():
-    c1, c2, c3, _ = st.columns([1.1, 1.35, 1.0, 2.5])
+    c1, c2, c3 = st.columns([1.05, 1.25, 0.95], gap='small')
     if c1.button('일시 정지' if s.running else '모니터링 시작', key='run_toggle',
                  type='primary', use_container_width=True):
         s.running = not s.running
@@ -328,8 +318,8 @@ def render_controls():
         s.next_visual = 0.
         st.rerun()
     with c2:
-        with st.popover('🧪 이상 상황 테스트', use_container_width=True):
-            st.markdown('**시뮬레이션할 장애/보안 유형 선택**')
+        with st.popover('🧪 이상 상황 시연', use_container_width=True):
+            st.markdown('**시연할 장애/보안 유형 선택**')
             st.caption('복수 항목을 동시에 선택하여 복합 장애를 연출할 수 있습니다.')
             chk_cpu = st.checkbox('트래픽 폭주 / CPU 과부하 (95%+)', value='cpu_spike' in s.active_scenarios, key='chk_cpu')
             chk_db = st.checkbox('DB 커넥션 고갈 / WAS 5xx 오류 급증', value='db_error' in s.active_scenarios, key='chk_db')
@@ -352,39 +342,37 @@ def render_controls():
 def render_metrics():
     snap = s.snapshot
     values = [
-        ('서버 CPU 사용률', f"{snap['cpu_pct']:g}%", f"메모리 {snap['memory_pct']:g}% · DB Conn {snap.get('db_conn_pct', 0):g}%", 'cpu', 'error' if snap['cpu_pct'] >= 90 else ''),
-        ('AP 평균 응답 시간', f"{snap['latency_ms']:,}ms", f"초당 처리량 {snap['tps']} TPS", 'clock', 'error' if snap['latency_ms'] >= 2000 else ''),
+        ('핵심 서버 CPU 사용률', f"{snap['cpu_pct']:g}%", f"메모리 {snap['memory_pct']:g}% · DB Conn {snap.get('db_conn_pct', 0):g}%", 'cpu', 'error' if snap['cpu_pct'] >= 90 else ''),
+        ('평균 AP 응답 시간', f"{snap['latency_ms']:,}ms", f"초당 처리량 {snap['tps']} TPS", 'clock', 'error' if snap['latency_ms'] >= 2000 else ''),
         ('WEB 5xx 오류율', f"{snap['error_pct']:g}%", f"WAS 누적 오류 {snap['was_errors']}건", 'alert', 'error' if snap['error_pct'] >= 5 else ''),
-        ('보안 민감 경로 탐지', f"{snap['sensitive_hits']}건", f"최근 IP {snap['sample_ip']}", 'shield', 'error' if snap['sensitive_hits'] > 0 else '')
+        ('보안 민감 경로 탐지', f"{snap['sensitive_hits']}건", f"최근 IP {snap['sample_ip']}", 'shield', 'warn' if snap['sensitive_hits'] > 0 else '')
     ]
     for col, (label, value, sub, icon, state_cls) in zip(st.columns(4), values):
         with col:
             icon_class = f"kpi-icon {state_cls}".strip()
-            markup(f'<div class="kpi"><div class="kpi-label"><span class="{icon_class}">{icon_svg(icon, size=22)}</span>{label}</div><div class="kpi-value">{value}</div><div class="kpi-sub">{sub}</div></div>')
+            markup(f'<div class="kpi"><div class="kpi-label"><span class="{icon_class}">{icon_svg(icon, size=20)}</span>{label}</div><div class="kpi-value">{value}</div><div class="kpi-sub">{sub}</div></div>')
 
 
 def render_status():
     if s.ai_error:
         title, sub, cls = 'AI 분석 결과를 확인하지 못했어요', '정상으로 판정하지 않고 기존 상태를 유지합니다.', 'danger'
     elif s.ai_future:
-        title, sub, cls = 'AI가 현재 상태를 분석하고 있어요', '최신 관측값과 파라미터·로그 패턴을 바탕으로 이상 징후를 검토합니다.', ''
+        title, sub, cls = 'AI가 현재 상태를 분석하고 있어요', '최신 관측값과 로그 패턴을 바탕으로 이상 징후를 검토합니다.', ''
     elif s.active_id:
         title, sub, cls = '이상 징후를 확인하고 있어요', f'연속 정상 확인 {s.normal_streak}/2 · 담당자 조치와 복구 상태를 확인하세요.', 'danger'
     elif not s.running:
-        title, sub, cls = '모니터링을 시작해 보세요', '상단의 [모니터링 시작] 또는 [이상 상황 테스트] 버튼을 누르면 실시간 관제와 AI 분석이 작동합니다.', 'idle'
+        title, sub, cls = '모니터링을 시작해 보세요', '우측 상단의 [모니터링 시작] 또는 [이상 상황 시연] 버튼을 누르면 실시간 관제와 AI 분석이 작동합니다.', 'idle'
     elif s.assessment:
         title, sub, cls = '최근 분석에서 정상 범위를 확인했어요', f'지표는 1초마다 갱신 · 다음 AI 분석까지 {max(0, int(s.next_sample - time.monotonic()))}초', 'idle'
     else:
-        title, sub, cls = 'AI가 현재 상태를 분석하고 있어요', '실시간 관측 데이터를 수집하고 AI 분석을 준비합니다.', ''
-    if ai.settings()['provider'] == 'demo':
-        sub += ' (LLM 규칙 기반 시뮬레이션 모드)'
-    icon = '<span class="spinner"></span>' if (s.ai_future or (s.running and not s.assessment and not s.ai_error)) else icon_svg('spark', size=26)
+        title, sub, cls = 'AI가 현재 상태를 분석하고 있어요', '실시간 관측 데이터를 수집하고 분석을 준비합니다.', 'idle'
+    icon = '<span class="spinner"></span>' if (s.ai_future or (s.running and not s.assessment)) else icon_svg('spark', size=24)
     markup(f'<div class="ai-banner {cls}">{icon}<div>{esc(title)}<small>{esc(sub)}</small></div></div>')
     if s.ai_error:
         st.error(s.ai_error)
 
 
-def render_overview_chart():
+def render_chart():
     fields = {
         '응답 시간': ('latency_ms', 'ms'),
         '서버 사용률': ('cpu_pct', '%'),
@@ -394,7 +382,7 @@ def render_overview_chart():
     }
     left, right = st.columns([2.1, 1], gap='medium')
     with left, st.container(border=True):
-        st.markdown('### ' + s.chart_choice + ' 추이')
+        st.markdown('#### ' + s.chart_choice + ' 추이')
         choice = st.selectbox('표시 지표', list(fields), key='chart_choice', label_visibility='collapsed')
         field, unit = fields[choice]
         frame = pd.DataFrame(s.samples)
@@ -403,18 +391,18 @@ def render_overview_chart():
             x=alt.X('시각:O', sort=None, title=None, axis=alt.Axis(labelAngle=0, values=frame['시각'].iloc[::max(1, len(frame) // 6)].tolist())),
             y=alt.Y(field + ':Q', title=unit, scale=alt.Scale(zero=True)),
             tooltip=[alt.Tooltip('시각:N'), alt.Tooltip(field + ':Q', title=choice + ' (' + unit + ')')])
-        chart = (base.mark_area(color='#3182f6', opacity=.08) + base.mark_line(color='#3182f6', strokeWidth=2.6)).properties(height=250)
+        chart = (base.mark_area(color='#3182f6', opacity=.08) + base.mark_line(color='#3182f6', strokeWidth=2.6)).properties(height=205)
         st.altair_chart(chart, use_container_width=True)
         st.caption('최근 관측 추이 · 1초 간격 실시간 갱신 · KST')
     with right, st.container(border=True):
-        markup('<div class="summary-title">' + icon_svg('spark', '#3182f6', 22) + f' AI 상태 요약 · {esc(choice)}</div>')
+        markup('<div class="summary-title">' + icon_svg('spark', '#3182f6', 20) + f' AI 상태 요약 · {esc(choice)}</div>')
         snap = s.snapshot
         metric_insights = {
-            '응답 시간': f"현재 AP 평균 응답 지연 {snap['latency_ms']:,}ms ({'임계치 2,000ms 초과 · 병목 의심' if snap['latency_ms'] >= 2000 else '정상 응답 구간 유지'})",
+            '응답 시간': f"현재 평균 AP 응답 지연 {snap['latency_ms']:,}ms ({'임계치 2,000ms 초과 · 병목 의심' if snap['latency_ms'] >= 2000 else '정상 응답 구간 유지'})",
             '서버 사용률': f"핵심 WAS CPU {snap['cpu_pct']:g}% · 메모리 {snap['memory_pct']:g}% ({'자원 포화 경계' if snap['cpu_pct'] >= 90 else '여유 자원 안정'})",
             '오류 비율': f"WEB 5xx 오류율 {snap['error_pct']:g}% · WAS 예외 {snap['was_errors']}건 ({'오류 급증 대응 필요' if snap['error_pct'] >= 5 else '오류율 정상'})",
-            'DB 커넥션': f"Primary DB 커넥션 파라미터 점유율 {snap.get('db_conn_pct', 0):g}% ({'커넥션 풀 고갈 임박' if snap.get('db_conn_pct', 0) >= 85 else '세션 풀 안정'})",
-            '보안 탐지 건수': f"보안 민감 경로 접근 {snap['sensitive_hits']}건 · 최근 IP {snap['sample_ip']} ({'비인가 접근 차단 확인 필요' if snap['sensitive_hits'] > 0 else '보안 위협 미탐지'})"
+            'DB 커넥션': f"Active DB 커넥션 점유율 {snap.get('db_conn_pct', 0):g}% ({'커넥션 풀 고갈 임박' if snap.get('db_conn_pct', 0) >= 85 else '세션 풀 안정'})",
+            '보안 탐지 건수': f"민감 경로 접근 {snap['sensitive_hits']}건 · 최근 IP {snap['sample_ip']} ({'비인가 접근 차단 확인 필요' if snap['sensitive_hits'] > 0 else '보안 위협 미탐지'})"
         }
         rows = [metric_insights.get(choice, '')]
         if s.ai_error:
@@ -431,61 +419,61 @@ def render_overview_chart():
         if s.assessed_at:
             markup('<div class="summary-meta">최근 분석 관측 시각 ' + esc(s.assessed_at[11:19]) + ' KST</div>')
 
-    # 추가 패널: 3대 서버팜 상태 요약 & 핵심 런타임 파라미터 점유율
-    p_left, p_right = st.columns([1.15, 1], gap='medium')
-    with p_left, st.container(border=True):
-        st.markdown('#### 3대 서버팜 실시간 헬스 요약')
-        nodes = s.snapshot.get('farm_nodes', [])
-        if nodes:
-            ndf = pd.DataFrame(nodes)
-            f_cols = st.columns(3)
-            for fc, fname in zip(f_cols, ['관세행정', '유니패스', '전자상거래']):
-                sub_df = ndf[ndf['farm'] == fname]
-                crit_n = int((sub_df['status'] == '위험').sum())
-                warn_n = int((sub_df['status'] == '주의').sum())
-                avg_c = round(sub_df['cpu_pct'].mean(), 1)
-                if crit_n > 0:
-                    st_lbl, st_cls = f'위험 {crit_n}대', 'fb-crit'
-                elif warn_n > 0:
-                    st_lbl, st_cls = f'주의 {warn_n}대', 'fb-warn'
-                else:
-                    st_lbl, st_cls = '정상 운영', 'fb-ok'
-                with fc:
-                    markup(
-                        f'<div style="border:1px solid var(--border);border-radius:14px;padding:14px;background:#fafbfc">'
-                        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
-                        f'<span style="font-weight:800;font-size:15px">{esc(fname)}</span>'
-                        f'<span class="farm-badge {st_cls}">{esc(st_lbl)}</span></div>'
-                        f'<div style="font-size:12px;color:var(--ink-sub);font-weight:600">평균 CPU {avg_c}% · 10대 가동</div>'
-                        f'</div>'
-                    )
+    # 3대 서버팜 상태 요약 & 핵심 파라미터 실시간 점유율 패널
+    col_farm, col_param = st.columns([1.35, 1], gap='medium')
+    with col_farm, st.container(border=True):
+        st.markdown('#### 3대 서버팜 실시간 상태 요약')
+        farm_nodes = s.snapshot.get('farm_nodes', [])
+        if farm_nodes:
+            f_df = pd.DataFrame(farm_nodes)
+            summary_rows = []
+            for fname in ['관세행정', '유니패스', '전자상거래']:
+                sub_f = f_df[f_df['farm'] == fname]
+                crit_cnt = int((sub_f['status'] == '위험').sum())
+                warn_cnt = int((sub_f['status'] == '주의').sum())
+                st_label = '위험' if crit_cnt > 0 else ('주의' if warn_cnt > 0 else '정상')
+                summary_rows.append({
+                    '서버팜': fname,
+                    '구성 노드': f"총 {len(sub_f)}대 (정상 {len(sub_f)-crit_cnt-warn_cnt})",
+                    '평균 CPU': f"{sub_f['cpu_pct'].mean():.1f}%",
+                    '평균 메모리': f"{sub_f['mem_pct'].mean():.1f}%",
+                    '상태': st_label
+                })
+            sdf = pd.DataFrame(summary_rows)
 
-    with p_right, st.container(border=True):
-        st.markdown('#### 핵심 AP · DB 런타임 파라미터 점유율')
+            def _style_farm_status(val):
+                if val == '위험':
+                    return 'color: #f04452; font-weight: 800;'
+                if val == '주의':
+                    return 'color: #f57c00; font-weight: 800;'
+                return 'color: #03b26c; font-weight: 700;'
+
+            st.dataframe(sdf.style.map(_style_farm_status, subset=['상태']), hide_index=True, use_container_width=True)
+
+    with col_param, st.container(border=True):
+        st.markdown('#### 핵심 AP · DB 파라미터 점유율')
         snap = s.snapshot
-        thread_pct = min(99.0, round(snap['cpu_pct'] * 0.92, 1))
-        db_pool_pct = snap.get('db_conn_pct', 38.0)
-        heap_pct = snap['memory_pct']
-        params = [
-            ('WAS Thread Pool 점유율', thread_pct, thread_pct >= 85),
-            ('DB Connection Pool 점유율', db_pool_pct, db_pool_pct >= 85),
-            ('JVM Heap Memory 사용률', heap_pct, heap_pct >= 85),
-        ]
-        bars_html = []
-        for p_name, p_val, is_crit in params:
-            fill_cls = 'crit' if is_crit else ('warn' if p_val >= 75 else '')
-            bars_html.append(
-                f'<div class="bar-wrap">'
-                f'<div class="bar-label"><span>{esc(p_name)}</span><span>{p_val}%</span></div>'
-                f'<div class="bar-track"><div class="bar-fill {fill_cls}" style="width:{min(100, p_val)}%"></div></div>'
+        thread_pct = min(99, round(snap['cpu_pct'] * 0.92))
+        db_pool_pct = min(99, round(snap.get('db_conn_pct', 38)))
+        heap_pct = min(98, round(snap['memory_pct'] * 0.95))
+
+        for p_name, p_val in [
+            ('WAS Worker Thread Pool', thread_pct),
+            ('DB Connection Pool (Active)', db_pool_pct),
+            ('JVM Old Gen Heap Memory', heap_pct),
+        ]:
+            bar_color = '#f04452' if p_val >= 85 else ('#f57c00' if p_val >= 70 else '#3182f6')
+            markup(
+                f'<div class="param-bar-wrap">'
+                f'<div class="param-bar-top"><span>{esc(p_name)}</span><span style="color:{bar_color}">{p_val}%</span></div>'
+                f'<div class="param-bar-track"><div class="param-bar-fill" style="width:{p_val}%;background:{bar_color}"></div></div>'
                 f'</div>'
             )
-        markup(''.join(bars_html))
 
     with st.container(border=True):
-        st.markdown('#### 실시간 유입 웹 · 보안 로그 스트림 (최근 8건)')
+        st.markdown('#### 실시간 유입 웹 · 보안 로그 스트림 (최근 6건)')
         recent_logs = []
-        for item in reversed(s.samples[-8:]):
+        for item in reversed(s.samples[-6:]):
             recent_logs.append({
                 '시각 (KST)': item['timestamp'][11:19],
                 '출발지 IP': item['sample_ip'],
@@ -496,15 +484,12 @@ def render_overview_chart():
             })
         log_df = pd.DataFrame(recent_logs)
 
-        def _style_sec_status(val):
+        def _style_sec_detect(val):
             if str(val).startswith('탐지'):
                 return 'color: #f04452; background-color: #ffeeee; font-weight: 800;'
-            if val == '정상':
-                return 'color: #03b26c; background-color: #e8f7f0; font-weight: 700;'
-            return ''
+            return 'color: #03b26c; font-weight: 700;'
 
-        styled_log_df = log_df.style.map(_style_sec_status, subset=['보안 탐지'])
-        st.dataframe(styled_log_df, hide_index=True, use_container_width=True)
+        st.dataframe(log_df.style.map(_style_sec_detect, subset=['보안 탐지']), hide_index=True, use_container_width=True)
 
     events = db.list_events()
     latest = ('최근 알림 없음' if not events else
@@ -513,108 +498,102 @@ def render_overview_chart():
 
 
 def render_infra_management():
-    """인프라 관리 전용 화면: 위험=빨간색, 주의=주황색 강조 적용."""
-    nodes = s.snapshot.get('farm_nodes', [])
-    if not nodes:
-        st.info('서버팜 데이터를 불러오는 중입니다.')
+    farm_nodes = s.snapshot.get('farm_nodes', [])
+    if not farm_nodes:
+        st.info('서버팜 자원 데이터를 수집 중입니다.')
         return
 
-    df = pd.DataFrame(nodes)
-    total_cnt = len(df)
-    ok_cnt = int((df['status'] == '정상').sum())
+    df = pd.DataFrame(farm_nodes)
+
+    # 1. 전체 인프라 자원 요약 KPI (30대 통합)
+    total_nodes = len(df)
+    normal_cnt = int((df['status'] == '정상').sum())
     warn_cnt = int((df['status'] == '주의').sum())
     crit_cnt = int((df['status'] == '위험').sum())
     avg_cpu = round(df['cpu_pct'].mean(), 1)
     avg_mem = round(df['mem_pct'].mean(), 1)
     avg_disk = round(df['disk_pct'].mean(), 1)
+    total_net = round(df['net_mbps'].sum(), 1)
 
-    kpi_state = 'error' if crit_cnt > 0 else ('warn' if warn_cnt > 0 else '')
     kpis = [
-        ('전체 관리 호스트', f"{total_cnt}대", f"정상 {ok_cnt} · 주의 {warn_cnt} · 위험 {crit_cnt}", 'server', kpi_state),
-        ('전체 평균 CPU 사용률', f"{avg_cpu}%", f"최고 부하 노드 {df.loc[df['cpu_pct'].idxmax(), 'hostname']}", 'cpu', 'error' if avg_cpu >= 80 else ('warn' if avg_cpu >= 65 else '')),
-        ('전체 평균 메모리 사용률', f"{avg_mem}%", f"최고 점유 노드 {df.loc[df['mem_pct'].idxmax(), 'hostname']}", 'traffic', ''),
-        ('스토리지(Disk) 평균 점유', f"{avg_disk}%", 'SAN / NAS 볼륨 통합 평균', 'report', '')
+        ('전체 관리 호스트', f"{total_nodes}대", f"정상 {normal_cnt} · 주의 {warn_cnt} · 위험 {crit_cnt}", 'server', 'error' if crit_cnt > 0 else ('warn' if warn_cnt > 0 else '')),
+        ('전체 평균 CPU / Load', f"{avg_cpu}%", f"최고 CPU {df['cpu_pct'].max()}% · 평균 Load {df['load_avg'].mean():.2f}", 'cpu', 'error' if df['cpu_pct'].max() >= 90 else ''),
+        ('전체 평균 메모리 사용률', f"{avg_mem}%", f"최고 메모리 {df['mem_pct'].max()}% · 총 세션 {df['sessions'].sum():,}", 'service', 'warn' if df['mem_pct'].max() >= 85 else ''),
+        ('디스크 평균 / 총 네트워크', f"{avg_disk}% / {total_net:,.0f}Mbps", '스토리지 임계치 85% 기준 감시', 'traffic', '')
     ]
     for col, (label, val, sub, ic, st_cls) in zip(st.columns(4), kpis):
         with col:
             ic_cls = f"kpi-icon {st_cls}".strip()
-            markup(f'<div class="kpi"><div class="kpi-label"><span class="{ic_cls}">{icon_svg(ic, size=22)}</span>{label}</div><div class="kpi-value">{val}</div><div class="kpi-sub">{sub}</div></div>')
+            markup(f'<div class="kpi"><div class="kpi-label"><span class="{ic_cls}">{icon_svg(ic, size=20)}</span>{label}</div><div class="kpi-value">{val}</div><div class="kpi-sub">{sub}</div></div>')
 
-    st.markdown('### 서버팜별 자원 운영 현황')
-    farm_cols = st.columns(3, gap='medium')
-    for col, farm_name in zip(farm_cols, ['관세행정', '유니패스', '전자상거래']):
-        fdf = df[df['farm'] == farm_name]
-        f_cpu = round(fdf['cpu_pct'].mean(), 1)
-        f_mem = round(fdf['mem_pct'].mean(), 1)
-        f_disk = round(fdf['disk_pct'].mean(), 1)
-        f_crit = int((fdf['status'] == '위험').sum())
-        f_warn = int((fdf['status'] == '주의').sum())
+    # 2. 서버팜별(관세행정 / 유니패스 / 전자상거래) 요약 카드
+    st.markdown('#### 서버팜별 자원 운영 현황')
+    farm_cards = ['<div class="farm-grid">']
+    for farm_name in ['관세행정', '유니패스', '전자상거래']:
+        sub_df = df[df['farm'] == farm_name]
+        f_crit = int((sub_df['status'] == '위험').sum())
+        f_warn = int((sub_df['status'] == '주의').sum())
         if f_crit > 0:
-            badge_txt, badge_cls = f'위험 {f_crit}대', 'fb-crit'
+            pill_cls, pill_txt = 'pill-crit', f'위험 {f_crit}대'
         elif f_warn > 0:
-            badge_txt, badge_cls = f'주의 {f_warn}대', 'fb-warn'
+            pill_cls, pill_txt = 'pill-warn', f'주의 {f_warn}대'
         else:
-            badge_txt, badge_cls = '전 노드 정상', 'fb-ok'
+            pill_cls, pill_txt = 'pill-ok', '전 노드 정상'
 
-        cpu_cls = 'crit' if f_cpu >= 80 else ('warn' if f_cpu >= 65 else '')
-        mem_cls = 'crit' if f_mem >= 85 else ('warn' if f_mem >= 75 else '')
-        with col:
-            markup(f'''
-            <div class="farm-card">
-                <div class="farm-header">
-                    <span class="farm-title">{esc(farm_name)} 서버팜</span>
-                    <span class="farm-badge {badge_cls}">{esc(badge_txt)}</span>
-                </div>
-                <div class="farm-spec">WEB · WAS · DB 3계층 클러스터 운영</div>
-                <div class="bar-wrap">
-                    <div class="bar-label"><span>평균 CPU 사용률</span><span>{f_cpu}%</span></div>
-                    <div class="bar-track"><div class="bar-fill {cpu_cls}" style="width:{min(100, f_cpu)}%"></div></div>
-                </div>
-                <div class="bar-wrap">
-                    <div class="bar-label"><span>평균 메모리 사용률</span><span>{f_mem}%</span></div>
-                    <div class="bar-track"><div class="bar-fill {mem_cls}" style="width:{min(100, f_mem)}%"></div></div>
-                </div>
-                <div class="bar-wrap" style="margin-bottom:0">
-                    <div class="bar-label"><span>평균 디스크 사용률</span><span>{f_disk}%</span></div>
-                    <div class="bar-track"><div class="bar-fill" style="width:{min(100, f_disk)}%"></div></div>
-                </div>
-            </div>
-            ''')
+        farm_cards.append(
+            f'<div class="farm-card">'
+            f'<div class="farm-head"><span class="farm-name">{esc(farm_name)} 서버팜</span><span class="pill {pill_cls}">{pill_txt}</span></div>'
+            f'<div class="farm-sub">WEB 4대 · WAS 4대 · DB 2대 (총 10대)</div>'
+            f'<div class="farm-metrics">'
+            f'<div><span>평균 CPU</span><strong>{sub_df["cpu_pct"].mean():.1f}%</strong></div>'
+            f'<div><span>평균 메모리</span><strong>{sub_df["mem_pct"].mean():.1f}%</strong></div>'
+            f'<div><span>평균 디스크</span><strong>{sub_df["disk_pct"].mean():.1f}%</strong></div>'
+            f'</div>'
+            f'</div>'
+        )
+    farm_cards.append('</div>')
+    markup(''.join(farm_cards))
 
-    st.markdown('### 호스트별 상세 자원 모니터링 인벤토리')
-    f_col1, f_col2, _ = st.columns([1.2, 1.2, 2.6])
-    farm_filter = f_col1.selectbox('서버팜 선택', ['전체 서버팜', '관세행정', '유니패스', '전자상거래'], key='farm_filter_box')
-    tier_filter = f_col2.selectbox('티어(계층) 구분', ['전체 계층', 'WEB', 'WAS', 'DB'], key='tier_filter_box')
-
-    filtered_df = df.copy()
-    if farm_filter != '전체 서버팜':
-        filtered_df = filtered_df[filtered_df['farm'] == farm_filter]
-    if tier_filter != '전체 계층':
-        filtered_df = filtered_df[filtered_df['tier'] == tier_filter]
-
+    # 3. 계층/서버팜 필터링 및 호스트 상세 자원 테이블
     with st.container(border=True):
-        disp = filtered_df[['farm', 'tier', 'hostname', 'ip', 'cpu_pct', 'mem_pct', 'disk_pct', 'net_mbps', 'load_avg', 'sessions', 'uptime', 'status']].copy()
-        disp.columns = ['서버팜', '계층', '호스트명', '내부 IP', 'CPU (%)', '메모리 (%)', '디스크 (%)', '네트워크 (Mbps)', 'Load Avg', '활성 세션', '가동시간', '상태']
+        st.markdown('#### 호스트별 상세 자원 모니터링 인벤토리')
+        f1, f2, f3 = st.columns([1.2, 1.2, 2.6])
+        with f1:
+            sel_farm = st.selectbox('서버팜 선택', ['전체 서버팜', '관세행정', '유니패스', '전자상거래'], key='farm_filter')
+        with f2:
+            sel_tier = st.selectbox('서버 계층 선택', ['전체 계층', 'WEB', 'WAS', 'DB'], key='tier_filter')
+        with f3:
+            only_issue = st.checkbox('주의/위험 임계치 초과 서버만 보기', value=False)
 
-        def _style_server_status(val):
-            if val == '위험':
-                return 'color: #f04452; background-color: #ffeeee; font-weight: 800;'
-            if val == '주의':
-                return 'color: #f57c00; background-color: #fff4e5; font-weight: 800;'
-            if val == '정상':
+        filtered = df.copy()
+        if sel_farm != '전체 서버팜':
+            filtered = filtered[filtered['farm'] == sel_farm]
+        if sel_tier != '전체 계층':
+            filtered = filtered[filtered['tier'] == sel_tier]
+        if only_issue:
+            filtered = filtered[filtered['status'] != '정상']
+
+        if filtered.empty:
+            st.success('선택한 조건에 해당하는 이상 징후 서버가 없습니다. 모든 노드가 정상 운영 중입니다.')
+        else:
+            disp = filtered[['farm', 'tier', 'hostname', 'ip', 'os', 'cpu_pct', 'mem_pct', 'disk_pct', 'net_mbps', 'load_avg', 'sessions', 'uptime', 'status']].copy()
+            disp.columns = ['서버팜', '계층', '호스트명', '내부 IP', 'OS / 미들웨어', 'CPU (%)', '메모리 (%)', '디스크 (%)', '네트워크 (Mbps)', 'Load Avg', '활성 세션', '가동시간', '상태']
+
+            def _highlight_status(val):
+                if val == '위험':
+                    return 'color: #f04452; background-color: #ffeeee; font-weight: 800;'
+                if val == '주의':
+                    return 'color: #f57c00; background-color: #fff4e5; font-weight: 800;'
                 return 'color: #03b26c; font-weight: 700;'
-            return ''
 
-        styled_disp = disp.style.map(_style_server_status, subset=['상태'])
-        st.dataframe(styled_disp, hide_index=True, use_container_width=True, height=460)
+            styled_disp = disp.style.map(_highlight_status, subset=['상태'])
+            st.dataframe(styled_disp, hide_index=True, use_container_width=True, height=460)
 
 
 def render_customs_quality():
-    """관세행정 서비스품질 전용 화면: 토스 모노톤 & 블루/레드 포인트 적용."""
     services = s.snapshot.get('customs_services', [])
     if not services:
         return
-
     total_cnt = sum(sv['count'] for sv in services)
     avg_lat = round(sum(sv['avg_ms'] for sv in services) / len(services))
     avg_succ = round(sum(sv['success_pct'] for sv in services) / len(services), 2)
@@ -622,35 +601,16 @@ def render_customs_quality():
 
     kpis = [
         ('금일 누적 행정 처리 건수', f"{total_cnt:,}건", '5대 핵심 관세 업무 합계', 'traffic', ''),
-        ('평균 업무 처리 응답속도', f"{avg_lat:,}ms", '목표 SLA 500ms 이내', 'clock', 'error' if avg_lat >= 1000 else ''),
-        ('평균 전자처리 성공률', f"{avg_succ}%", '오류 및 재전송 포함 집계', 'check', 'error' if avg_succ < 99.0 else ''),
-        ('지연/주의 서비스 수', f"{delayed_cnt}개 / {len(services)}개", '실시간 임계치 감시 기준', 'alert', 'error' if delayed_cnt > 0 else '')
+        ('평균 업무 처리 응답속도', f"{avg_lat:,}ms", '목표 SLA 기준 준수 여부 감시', 'clock', 'error' if avg_lat >= 1000 else ''),
+        ('평균 전자처리 성공률', f"{avg_succ}%", '오류 및 재전송 포함 집계', 'check', 'warn' if avg_succ < 99.0 else ''),
+        ('지연/주의 업무 수', f"{delayed_cnt}개 / {len(services)}개", '실시간 임계치 감시 기준', 'alert', 'error' if delayed_cnt > 0 else '')
     ]
     for col, (label, val, sub, ic, st_cls) in zip(st.columns(4), kpis):
         with col:
             ic_cls = f"kpi-icon {st_cls}".strip()
-            markup(f'<div class="kpi"><div class="kpi-label"><span class="{ic_cls}">{icon_svg(ic, size=22)}</span>{label}</div><div class="kpi-value">{val}</div><div class="kpi-sub">{sub}</div></div>')
+            markup(f'<div class="kpi"><div class="kpi-label"><span class="{ic_cls}">{icon_svg(ic, size=20)}</span>{label}</div><div class="kpi-value">{val}</div><div class="kpi-sub">{sub}</div></div>')
 
-    st.markdown('### 5대 핵심 관세행정 업무 실시간 품질 현황')
-    cards_html = ['<div class="svc-grid">']
-    for sv in services:
-        if sv['status'] == '지연':
-            pill_cls = 'fb-crit'
-        elif sv['status'] == '주의':
-            pill_cls = 'fb-warn'
-        else:
-            pill_cls = 'fb-ok'
-        cards_html.append(
-            f'<div class="svc-card">'
-            f'<div class="svc-top"><span class="svc-name">{esc(sv["service_name"])}</span><span class="farm-badge {pill_cls}">{esc(sv["status"])}</span></div>'
-            f'<div class="svc-code">{esc(sv["code"])} · SLA {sv["sla_ms"]}ms</div>'
-            f'<div class="svc-val">{sv["count"]:,}건</div>'
-            f'<div class="svc-sub">응답 <b>{sv["avg_ms"]:,}ms</b> · 성공률 <b>{sv["success_pct"]}%</b></div>'
-            f'</div>'
-        )
-    cards_html.append('</div>')
-    markup(''.join(cards_html))
-
+    st.markdown('#### 핵심 업무별 처리 건수 및 응답 속도 비교')
     srv_df = pd.DataFrame(services)
     c_left, c_right = st.columns(2, gap='medium')
     with c_left, st.container(border=True):
@@ -672,10 +632,18 @@ def render_customs_quality():
         st.altair_chart(bar_ms, use_container_width=True)
 
     with st.container(border=True):
-        st.markdown('**관세행정 서비스품질 상세 내역**')
+        st.markdown('**관세행정 5대 핵심 서비스 실시간 품질 상세표**')
         disp_df = srv_df[['service_name', 'code', 'sla_ms', 'count', 'avg_ms', 'success_pct', 'status']].copy()
         disp_df.columns = ['서비스 업무명', '업무 코드', '목표 SLA (ms)', '누적 처리 건수 (건)', '평균 응답속도 (ms)', '처리 성공률 (%)', '품질 상태']
-        st.dataframe(disp_df, hide_index=True, use_container_width=True)
+
+        def _style_quality_status(val):
+            if val == '지연':
+                return 'color: #f04452; background-color: #ffeeee; font-weight: 800;'
+            if val == '주의':
+                return 'color: #f57c00; background-color: #fff4e5; font-weight: 800;'
+            return 'color: #03b26c; font-weight: 700;'
+
+        st.dataframe(disp_df.style.map(_style_quality_status, subset=['품질 상태']), hide_index=True, use_container_width=True)
 
 
 @st.fragment(run_every='1s')
@@ -692,7 +660,7 @@ def monitor():
         try:
             answer = s.chat_future.result()
         except Exception as exc:
-            answer = str(exc) if isinstance(exc, ai.IntegrationError) else 'LLM 응답 처리 실패'
+            answer = str(exc) if isinstance(exc, ai.IntegrationError) else 'AI 응답 처리 실패'
         s.chat_history.append(('assistant', answer))
         s.chat_future = None
         full_refresh = True
@@ -755,7 +723,7 @@ def monitor():
     if s.menu == 'AI 대시보드':
         render_metrics()
         render_status()
-        render_overview_chart()
+        render_chart()
     elif s.menu == '인프라 관리':
         render_infra_management()
     elif s.menu == '관세행정 서비스품질':
@@ -769,12 +737,16 @@ heading = {
     '알림 기록': '알림 및 대응 기록',
     '자동 리포트': '자동 리포트 저장소'
 }
-scen_map = {'cpu_spike': 'CPU 폭주', 'db_error': 'DB/5xx 오류', 'security': '보안 접근'}
-scen_text = '시나리오: ' + ' + '.join(scen_map[x] for x in s.active_scenarios) if s.active_scenarios else '정상 시나리오'
-markup(f'<div class="head"><h1>{heading.get(s.menu, "AI 대시보드 · 통합 관제")}</h1><div class="badge-group"><span class="badge ai">{esc(ai.provider_label())}</span><span class="badge">{esc(scen_text)}</span></div></div>')
-
+page_title = heading.get(s.menu, 'AI 대시보드 · 통합 관제')
 if s.menu in ('AI 대시보드', '인프라 관리', '관세행정 서비스품질'):
-    render_controls()
+    h_left, h_right = st.columns([1.4, 1.1], vertical_alignment='center')
+    with h_left:
+        markup(f'<h1>{page_title}</h1>')
+    with h_right:
+        render_controls()
+else:
+    markup(f'<div class="head"><h1>{page_title}</h1></div>')
+
 monitor()
 
 if s.active_id and s.menu != '자동 리포트':
@@ -835,7 +807,7 @@ if s.menu == '자동 리포트':
             with st.container(border=True):
                 st.markdown(s.repo_text)
     st.divider()
-    st.subheader('저장된 이벤트 / 커밋 재시도')
+    st.subheader('이벤트 이력 / 커밋 재시도')
     events = db.list_events()
     if not events:
         st.info('아직 탐지된 이벤트가 없습니다.')
@@ -859,7 +831,7 @@ if s.chat_open:
             s.chat_open = False
             st.rerun()
         if not s.chat_history:
-            markup('<div class="chat-empty"><div class="chat-symbol">' + icon_svg('chat', '#3182f6', 64) + '</div><h3>무엇을 확인할까요?</h3></div>')
+            markup('<div class="chat-empty"><div class="chat-symbol">' + icon_svg('chat', '#3182f6', 58) + '</div><h3>무엇을 확인할까요?</h3></div>')
             for question in ['현재 인프라 및 보안 상태 요약', '가장 부하가 높은 서버팜 분석', '현재 상황 권장 대응 절차']:
                 if st.button(question, key='suggest_' + question, use_container_width=True, disabled=s.chat_future is not None):
                     ask(question)
@@ -875,7 +847,7 @@ if s.chat_open:
         if s.chat_future:
             st.info('AI가 답변을 작성하고 있어요…')
         with st.form('chat_form', clear_on_submit=True):
-            question = st.text_area('궁금한 내용을 입력하세요', height=88)
+            question = st.text_area('궁금한 내용을 입력하세요', height=85)
             if st.form_submit_button('보내기', type='primary', use_container_width=True, disabled=s.chat_future is not None) and question.strip():
                 ask(question.strip())
                 st.rerun()
@@ -911,7 +883,7 @@ def popup_css(kind):
     [data-testid="stDialog"] [role="dialog"]:not(:has([role="dialog"])) {{background:#fff!important;color:#191f28!important;
         position:relative;z-index:1;box-sizing:border-box;flex:0 1 560px;
         animation:none!important;opacity:1!important;width:560px!important;max-width:calc(100vw - 32px)!important;
-        min-width:0!important;min-height:0!important;margin:0!important;border-radius:25px!important;
+        min-width:0!important;min-height:0!important;margin:0!important;border-radius:22px!important;
         max-height:calc(100vh - 56px);max-height:calc(100dvh - 56px);overflow-y:auto;
         border:1px solid rgba({color},.22)!important;border-top:5px solid {solid}!important;
         box-shadow:0 24px 80px rgba({color},.25)!important}}
@@ -921,7 +893,7 @@ def popup_css(kind):
     [data-testid="stDialog"] button[kind="primary"]:hover {{filter:brightness(.93)}}
     [data-testid="stDialog"] button[kind="primary"]:disabled {{opacity:.55}}
     [data-testid="stDialog"] .dialog-symbol svg {{display:block;margin:0 auto}}
-    [data-testid="stDialog"] .dialog-heading {{color:{solid};font-size:28px}}
+    [data-testid="stDialog"] .dialog-heading {{color:{solid};font-size:26px}}
     [data-testid="stDialog"] .dialog-box {{background:rgba({color},.06)}}
     .st-key-close_recovery button {{color:{solid}!important;border-color:rgba({color},.35)!important}}
     </style>''')
@@ -949,9 +921,9 @@ def incident_dialog(kind, event_id):
             title = '이상 징후를 발견했어요'
     else:
         title = '정상 상태로 돌아왔어요'
-    symbol = icon_svg("alert" if is_alert else "check", color, 54)
+    symbol = icon_svg("alert" if is_alert else "check", color, 50)
     markup(f'<div class="dialog-symbol" style="color:{color}">{symbol}</div><div class="dialog-heading">{title}</div><div class="dialog-sub">{"AI가 확인한 이상 징후" if is_alert else "연속 2회 정상 확인"}</div>')
-    markup(f'<div class="dialog-metrics"><div><span>AP 응답 시간</span><strong>{snap["latency_ms"]:,}ms</strong></div><div><span>서버 CPU</span><strong>{snap["cpu_pct"]:g}%</strong></div><div><span>보안/5xx</span><strong>{snap["sensitive_hits"]}건 / {snap["error_pct"]:g}%</strong></div></div>')
+    markup(f'<div class="dialog-metrics"><div><span>응답 시간</span><strong>{snap["latency_ms"]:,}ms</strong></div><div><span>핵심 CPU</span><strong>{snap["cpu_pct"]:g}%</strong></div><div><span>보안/5xx</span><strong>{snap["sensitive_hits"]}건 / {snap["error_pct"]:g}%</strong></div></div>')
     if is_alert:
         st.write(event['diagnosis']['summary'])
         actions = ''.join('<div>• ' + esc(a) + '</div>' for a in event['diagnosis']['actions'])
