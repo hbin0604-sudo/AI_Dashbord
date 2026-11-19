@@ -1,0 +1,6 @@
+streamlit==1.51.0
+requests>=2.32.3,<3
+pandas>=2.2,<3
+python-dotenv>=1.0,<2
+PyJWT[crypto]>=2.10,<3
+filelock>=3.16,<4
