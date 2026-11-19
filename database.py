@@ -260,7 +260,14 @@ def make_snapshot(scenario='normal', tick=0):
     sec_hits = 0
     was_err = 0
     ip = '192.0.2.' + str(10 + (tick % 40))
-    normal_urls = ['/health', '/api/v1/status', '/api/v1/cargo/track', '/index.do']
+    normal_urls = [
+        '/csp/main/index.do',
+        '/clip/cargo/trackStatus.do',
+        '/rip/refund/checkEligibility.do',
+        '/csp/edi/receiveDoc.do',
+        '/clip/import/declarationView.do',
+        '/rip/notice/billStatus.do',
+    ]
     url = normal_urls[tick % len(normal_urls)]
     status = 200
 
@@ -273,7 +280,12 @@ def make_snapshot(scenario='normal', tick=0):
         db_conn = max(db_conn, round(72.0 + 4.0 * slow_wave, 1))
         was_err += max(2, round(6 + 2 * wave))
         ip = '203.0.113.45'
-        url = '/api/v1/customs/clearance-batch'
+        cpu_urls = [
+            '/csp/clearance/batchProcess.do',
+            '/clip/manifest/bulkQuery.do',
+            '/rip/tax/calculateBatch.do',
+        ]
+        url = cpu_urls[tick % len(cpu_urls)]
         status = 504 if tick % 4 == 0 else 200
 
     if is_db:
@@ -285,16 +297,21 @@ def make_snapshot(scenario='normal', tick=0):
         db_conn = round(min(99.0, 92.5 + 4.5 * wave), 1)
         was_err += max(5, round(18 + 5 * wave))
         ip = '198.51.100.88'
-        url = '/api/v1/declarations/submit'
+        db_urls = [
+            '/csp/declarations/submit.do',
+            '/clip/bill/createNotice.do',
+            '/rip/refund/approveDbTx.do',
+        ]
+        url = db_urls[tick % len(db_urls)]
         status = 503 if tick % 2 == 0 else 500
 
     if is_sec:
         sec_hits = 3 + (tick % 3)
         ip = '211.234.110.55'
         suspicious_urls = [
-            '/cgi-bin/vulnerable.cgi?file=/etc/passwd',
-            '/admin/config/.env',
-            "/api/user?id=1' OR '1'='1"
+            '/csp/cgi-bin/download.do?file=../../../../etc/passwd',
+            '/clip/admin/config/.env',
+            "/rip/api/userInfo.do?id=1' OR '1'='1",
         ]
         url = suspicious_urls[tick % len(suspicious_urls)]
         status = 403
