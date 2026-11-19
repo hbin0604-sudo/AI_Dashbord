@@ -136,53 +136,63 @@ def resolve_event(event_id, snapshot, assessment):
 
 
 def make_snapshot(scenario='normal', tick=0):
-    """4가지 시나리오별 상관관계가 반영된 합성 인프라·보안 관측 데이터 생성.
-    
-    scenario:
-      - 'normal': 정상 운영 상태
-      - 'cpu_spike': 트래픽 폭주 및 CPU 과부하 (CPU 92~98%, 응답 지연 2.4~3.2s)
-      - 'db_error': DB 커넥션 고갈 및 WAS 5xx 오류 급증 (5xx 7~10%, DB Conn 88~96%)
-      - 'security': 외부 비인가 IP의 민감 경로 접근 탐지 (sensitive_hits > 0)
-    """
+    """다중 시나리오(복합 체크 지원) 및 관세행정 서비스 품질 지표가 포함된 합성 데이터 생성."""
     if isinstance(scenario, bool):
-        scenario = 'cpu_spike' if scenario else 'normal'
+        active_scenarios = {'cpu_spike'} if scenario else set()
+    elif isinstance(scenario, (list, set, tuple)):
+        active_scenarios = set(scenario)
+    elif scenario and scenario != 'normal':
+        active_scenarios = {scenario}
+    else:
+        active_scenarios = set()
+
+    is_cpu = 'cpu_spike' in active_scenarios
+    is_db = 'db_error' in active_scenarios
+    is_sec = 'security' in active_scenarios
 
     wave = .65 * math.sin(tick / 7) + .35 * math.sin(tick * 1.7)
     slow_wave = math.sin(tick / 17)
 
-    if scenario == 'cpu_spike':
+    # 기본 정상치에서 활성화된 시나리오별로 지표 가중 반영
+    cpu = round(36.5 + 6.5 * wave, 1)
+    mem = round(58.0 + 2.0 * slow_wave, 1)
+    tps = round(125 + 18 * wave)
+    err = round(max(0.05, 0.18 + 0.07 * wave), 2)
+    lat = round(178 + 32 * wave)
+    db_conn = round(38.0 + 3.0 * slow_wave, 1)
+    sec_hits = 0
+    was_err = 0
+    ip = '192.0.2.' + str(10 + (tick % 40))
+    normal_urls = ['/health', '/api/v1/status', '/api/v1/cargo/track', '/index.do']
+    url = normal_urls[tick % len(normal_urls)]
+    status = 200
+
+    if is_cpu:
         cpu = round(min(98.5, 95.2 + 2.8 * wave), 1)
-        mem = round(84.5 + 2.5 * slow_wave, 1)
+        mem = max(mem, round(84.5 + 2.5 * slow_wave, 1))
         tps = round(430 + 40 * wave)
-        err = round(1.8 + 0.6 * wave, 2)
-        lat = round(2750 + 380 * wave)
-        db_conn = round(72.0 + 4.0 * slow_wave, 1)
-        sec_hits = 0
-        was_err = max(2, round(6 + 2 * wave))
+        err = max(err, round(1.8 + 0.6 * wave, 2))
+        lat = max(lat, round(2750 + 380 * wave))
+        db_conn = max(db_conn, round(72.0 + 4.0 * slow_wave, 1))
+        was_err += max(2, round(6 + 2 * wave))
         ip = '203.0.113.45'
         url = '/api/v1/customs/clearance-batch'
         status = 504 if tick % 4 == 0 else 200
-    elif scenario == 'db_error':
-        cpu = round(76.0 + 5.0 * wave, 1)
-        mem = round(88.0 + 2.0 * slow_wave, 1)
-        tps = round(190 + 25 * wave)
+
+    if is_db:
+        cpu = max(cpu, round(76.0 + 5.0 * wave, 1))
+        mem = max(mem, round(88.0 + 2.0 * slow_wave, 1))
+        tps = max(tps, round(190 + 25 * wave))
         err = round(8.6 + 1.4 * wave, 2)
-        lat = round(2420 + 310 * wave)
+        lat = max(lat, round(2420 + 310 * wave))
         db_conn = round(min(99.0, 92.5 + 4.5 * wave), 1)
-        sec_hits = 0
-        was_err = max(5, round(18 + 5 * wave))
+        was_err += max(5, round(18 + 5 * wave))
         ip = '198.51.100.88'
         url = '/api/v1/declarations/submit'
         status = 503 if tick % 2 == 0 else 500
-    elif scenario == 'security':
-        cpu = round(42.0 + 6.0 * wave, 1)
-        mem = round(61.0 + 2.0 * slow_wave, 1)
-        tps = round(145 + 22 * wave)
-        err = round(1.2 + 0.4 * wave, 2)
-        lat = round(215 + 35 * wave)
-        db_conn = round(44.0 + 3.0 * slow_wave, 1)
+
+    if is_sec:
         sec_hits = 3 + (tick % 3)
-        was_err = 0
         ip = '211.234.110.55'
         suspicious_urls = [
             '/cgi-bin/vulnerable.cgi?file=/etc/passwd',
@@ -191,19 +201,8 @@ def make_snapshot(scenario='normal', tick=0):
         ]
         url = suspicious_urls[tick % len(suspicious_urls)]
         status = 403
-    else:  # 'normal'
-        cpu = round(36.5 + 6.5 * wave, 1)
-        mem = round(58.0 + 2.0 * slow_wave, 1)
-        tps = round(125 + 18 * wave)
-        err = round(max(0.05, 0.18 + 0.07 * wave), 2)
-        lat = round(178 + 32 * wave)
-        db_conn = round(38.0 + 3.0 * slow_wave, 1)
-        sec_hits = 0
-        was_err = 0
-        ip = '192.0.2.' + str(10 + (tick % 40))
-        normal_urls = ['/health', '/api/v1/status', '/api/v1/cargo/track', '/index.do']
-        url = normal_urls[tick % len(normal_urls)]
-        status = 200
+
+    scen_key = '+'.join(sorted(active_scenarios)) if active_scenarios else 'normal'
 
     # 다중 노드별 세부 상태 생성
     nodes = [
@@ -213,7 +212,7 @@ def make_snapshot(scenario='normal', tick=0):
             'cpu': round(max(12.0, cpu * 0.65), 1),
             'mem': round(max(25.0, mem * 0.72), 1),
             'conn': round(tps * 2.4),
-            'status': '주의' if scenario == 'security' else ('과부하' if cpu >= 90 else '정상')
+            'status': '주의' if is_sec else ('과부하' if cpu >= 90 else '정상')
         },
         {
             'node': 'WAS-CORE-01',
@@ -239,6 +238,74 @@ def make_snapshot(scenario='normal', tick=0):
             'conn': f"{db_conn}%",
             'status': '위험' if db_conn >= 85 else '정상'
         }
+    ]
+
+    # 관세행정 5대 핵심 서비스 품질 지표 생성
+    delay_factor = 6.5 if (is_cpu or is_db) else 1.0
+    err_penalty = 4.2 if is_db else (0.8 if is_cpu else 0.0)
+    customs_services = [
+        {
+            'service_name': '수입신고',
+            'code': 'IMP-DEC',
+            'count': round(1420 + tick * 7 + (320 if is_cpu else 0)),
+            'avg_ms': round((210 + 18 * wave) * delay_factor),
+            'success_pct': round(max(91.0, 99.92 - err_penalty * 0.9), 2),
+            'status': '지연' if (is_cpu or is_db) else '원활'
+        },
+        {
+            'service_name': '전자문서 송수신',
+            'code': 'EDI-MSG',
+            'count': round(3850 + tick * 15 + (610 if is_cpu else 0)),
+            'avg_ms': round((145 + 12 * wave) * (4.8 if is_cpu else 1.0)),
+            'success_pct': round(max(94.5, 99.98 - err_penalty * 0.4), 2),
+            'status': '주의' if is_cpu else '원활'
+        },
+        {
+            'service_name': '고지서 생성',
+            'code': 'BIL-GEN',
+            'count': round(960 + tick * 4 + (110 if is_db else 0)),
+            'avg_ms': round((310 + 25 * wave) * (7.2 if is_db else (2.1 if is_cpu else 1.0))),
+            'success_pct': round(max(89.5, 99.89 - err_penalty * 1.3), 2),
+            'status': '지연' if is_db else '원활'
+        },
+        {
+            'service_name': '화물자동수리',
+            'code': 'CRG-CLR',
+            'count': round(2140 + tick * 9 + (450 if is_cpu else 0)),
+            'avg_ms': round((185 + 15 * wave) * delay_factor),
+            'success_pct': round(max(92.0, 99.95 - err_penalty * 0.7), 2),
+            'status': '지연' if (is_cpu or is_db) else '원활'
+        },
+        {
+            'service_name': '환급심사',
+            'code': 'DRB-REV',
+            'count': round(540 + tick * 2),
+            'avg_ms': round((420 + 30 * wave) * (5.5 if is_db else 1.0)),
+            'success_pct': round(max(93.0, 99.91 - err_penalty * 0.8), 2),
+            'status': '주의' if is_db else '원활'
+        }
+    ]
+
+    return {
+        'timestamp': now(),
+        'scenario': scen_key,
+        'active_scenarios': sorted(active_scenarios),
+        'service': 'WAS-CORE-01',
+        'synthetic': True,
+        'cpu_pct': cpu,
+        'memory_pct': mem,
+        'tps': tps,
+        'error_pct': err,
+        'latency_ms': lat,
+        'db_conn_pct': db_conn,
+        'sensitive_hits': sec_hits,
+        'was_errors': was_err,
+        'sample_ip': ip,
+        'sample_url': url,
+        'http_status': status,
+        'nodes': nodes,
+        'customs_services': customs_services
+    }
     ]
 
     return {
