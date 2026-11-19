@@ -1,4 +1,4 @@
-"""AI Dashboard — 토스 컬러 팔레트 기반 통합 인프라 및 서비스품질 관제 시스템."""
+"""전자통관 지능형 통합 관제시스템 — 토스 컬러 팔레트 기반 통합 인프라·보안·AP 품질 관제."""
 import html
 import json
 import time
@@ -15,7 +15,7 @@ import database as db
 
 AI_ANALYSIS_INTERVAL_SECONDS = 30
 
-st.set_page_config(page_title='AI 대시보드 · 통합 관제', page_icon='📊', layout='wide')
+st.set_page_config(page_title='전자통관 지능형 통합 관제시스템', page_icon='📊', layout='wide')
 db.init_db()
 db.seed_initial_history()
 
@@ -28,7 +28,7 @@ def workers():
 pool, report_jobs, job_lock = workers()
 s = st.session_state
 for key, value in {
-    'menu': 'AI대시보드', 'running': False, 'active_scenarios': [],
+    'menu': 'AI 대시보드', 'running': False, 'active_scenarios': [],
     'generation': 0, 'tick': 0, 'samples': [], 'snapshot': db.make_snapshot([]),
     'assessment': None, 'assessed_at': '', 'ai_future': None, 'next_sample': 0.,
     'next_visual': 0., 'ai_error': '', 'active_id': None, 'normal_streak': 0,
@@ -43,7 +43,12 @@ for key, value in {
         s[key] = value
 
 # 이전 세션 메뉴명 호환 처리
-menu_migration = {'한눈에 보기': 'AI대시보드', '서버 상태': '인프라 관리', '관세행정 서비스 품질': '관세행정 서비스품질'}
+menu_migration = {
+    '한눈에 보기': 'AI 대시보드',
+    'AI대시보드': 'AI 대시보드',
+    '서버 상태': '인프라 관리',
+    '관세행정 서비스 품질': '관세행정 서비스품질',
+}
 if s.menu in menu_migration:
     s.menu = menu_migration[s.menu]
 
@@ -109,10 +114,7 @@ def button_icon_css(key, name):
             f'mask:url("{uri}") center/contain no-repeat;}}')
 
 
-# 토스(Toss) 디자인 시스템 컬러 팔레트 적용:
-# Primary Blue: #3182f6 / Hover Blue: #1b64da / Soft Blue Bg: #e8f3ff
-# Grey Scale: #191f28 (900), #333d4b (800), #4e5968 (700), #6b7684 (600), #8b95a1 (500), #e5e8eb (200), #f2f4f6 (100)
-# Semantic Red: #f04452 (Soft #ffeeee) / Semantic Green: #03b26c (Soft #e8f7f0)
+# 토스(Toss) 디자인 시스템 컬러 팔레트
 markup('''<style>
 :root {
     --blue:#3182f6;
@@ -138,17 +140,19 @@ button, input, textarea {font-family:inherit!important}
 [data-testid="stButton"] button[kind="primary"],[data-testid="stFormSubmitButton"] button[kind="primary"] {background:var(--blue);color:white;border-color:var(--blue)}
 [data-testid="stButton"] button:hover {border-color:var(--blue);color:var(--blue);background:#f9fafb}
 [data-testid="stButton"] button[kind="primary"]:hover {color:white;background:var(--blue-dark)}
-[data-testid="stSidebar"] {background:white;border-right:1px solid var(--border);min-width:255px;max-width:280px}
+[data-testid="stSidebar"] {background:white;border-right:1px solid var(--border);min-width:265px;max-width:295px}
 [data-testid="stSidebar"] p,[data-testid="stSidebar"] span {color:var(--ink)}
 [data-testid="stSidebar"] button {border:0;background:white;text-align:left;justify-content:flex-start;min-height:50px}
 [data-testid="stSidebar"] button p {font-size:17px;font-weight:700;color:var(--ink-sub)}
 [data-testid="stSidebar"] button[kind="primary"] {background:var(--blue-soft)!important;color:var(--blue)!important}
 [data-testid="stSidebar"] button[kind="primary"] p {color:var(--blue)!important}
 [data-testid="stSidebar"] button:hover {background:var(--bg)}
-.st-key-bottom_nav {padding-top:16vh;border-top:0}
-.brand {font-size:23px;font-weight:800;letter-spacing:-.8px;margin:8px 0 4px;color:var(--ink)}
-.brand-icon svg {display:block}.brand-icon {display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--blue);color:white!important;border-radius:11px;margin-right:8px}
-.brand-sub {font-size:12px;color:var(--muted);margin-bottom:26px}
+.st-key-bottom_nav {padding-top:14vh;border-top:0}
+.brand-box {display:flex;align-items:flex-start;gap:10px;margin:6px 0 8px}
+.brand-icon svg {display:block}
+.brand-icon {display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;flex:0 0 36px;background:var(--blue);color:white!important;border-radius:11px;margin-top:2px}
+.brand-title {font-size:18px;font-weight:800;line-height:1.3;letter-spacing:-.6px;color:var(--ink);word-break:keep-all}
+.brand-sub {font-size:12px;line-height:1.45;color:var(--muted);margin-bottom:24px;word-break:keep-all}
 .head {display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px}
 .head h1 {margin:0;padding:0}
 .badge-group {display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -185,7 +189,7 @@ button, input, textarea {font-family:inherit!important}
 .bar-track {width:100%;height:7px;background:var(--bg);border-radius:99px;overflow:hidden}
 .bar-fill {height:100%;border-radius:99px;background:var(--blue)}
 .bar-fill.crit {background:var(--red)}
-/* 관세행정 서비스품질 카드 (토스 모노톤 + 블루/레드 포인트) */
+/* 관세행정 서비스품질 카드 */
 .svc-grid {display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:14px 0 18px}
 .svc-card {background:white;border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(25,31,40,.02)}
 .svc-top {display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
@@ -247,7 +251,7 @@ def submit_report(event_id):
             report_jobs[event_id] = future
         s.report_future = future
         s.report_event = event_id
-        s.report_notice = 'AI 보고서를 작성하고 GitLab에 저장하고 있어요…'
+        s.report_notice = '로컬 LLM이 보고서를 작성하고 GitLab에 저장하고 있어요…'
 
 
 def ask(question):
@@ -255,7 +259,7 @@ def ask(question):
         return
     context = {'latest_sample': ai.compact_snapshot(s.snapshot), 'last_assessment': s.assessment,
                'assessment_time': s.assessed_at, 'recent_messages': s.chat_history[-6:]}
-    prompt = ('당신은 WEB/WAS/DB 인프라 및 보안 운영 도우미입니다. 다음 자료는 가상 시연 데이터입니다. '
+    prompt = ('당신은 전자통관 인프라·WAF 보안·AP 응답 및 파라미터 통합 관제 도우미입니다. '
               '관측과 추정을 구분하고 실제 조치가 실행됐다고 단정하지 마세요. 한국어로 간결하게 답하세요.\n'
               + json.dumps(context, ensure_ascii=False) + '\n질문: ' + question)
     s.chat_history.append(('user', question))
@@ -273,9 +277,15 @@ markup('<style>' + ''.join(button_icon_css(key, icon) for key, icon in icon_butt
        '.st-key-close_chat button::before {margin:0}' + '</style>')
 
 with st.sidebar:
-    markup('<div class="brand"><span class="brand-icon">' + icon_svg('server', 'white', 24) + '</span>AI 대시보드</div><div class="brand-sub">WEB / WAS / DB 통합 관제</div>')
+    markup(
+        '<div class="brand-box">'
+        '<span class="brand-icon">' + icon_svg('server', 'white', 22) + '</span>'
+        '<div class="brand-title">전자통관 지능형 통합 관제시스템</div>'
+        '</div>'
+        '<div class="brand-sub">인프라 자원 · WAF 보안 · AP 응답속도 및 파라미터 통합 관제</div>'
+    )
     for item, nav_key in [
-        ('AI대시보드', 'overview'),
+        ('AI 대시보드', 'overview'),
         ('인프라 관리', 'servers'),
         ('관세행정 서비스품질', 'customs'),
         ('알림 기록', 'alerts')
@@ -291,12 +301,12 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-    st.caption('연동 상태 점검')
-    if st.button('AI · GitLab 연결 테스트', use_container_width=True, disabled=s.integration_future is not None):
+    st.caption('로컬 LLM · 저장소 연동 점검')
+    if st.button('로컬 LLM · GitLab 연결 테스트', use_container_width=True, disabled=s.integration_future is not None):
         def _run_checks():
             a_res = ai.check_ai()
             g_res = ai.check_gitlab()
-            return f"AI({a_res['mode']}): {a_res['message']} | GitLab: {g_res['project']} ({g_res['branch']})"
+            return f"{a_res['mode']}: {a_res['message']} | GitLab: {g_res['project']} ({g_res['branch']})"
         s.integration_future = pool.submit(_run_checks)
         st.rerun()
     if s.integration_future:
@@ -320,7 +330,7 @@ def render_controls():
             st.caption('복수 항목을 동시에 선택하여 복합 장애를 연출할 수 있습니다.')
             chk_cpu = st.checkbox('트래픽 폭주 / CPU 과부하 (95%+)', value='cpu_spike' in s.active_scenarios, key='chk_cpu')
             chk_db = st.checkbox('DB 커넥션 고갈 / WAS 5xx 오류 급증', value='db_error' in s.active_scenarios, key='chk_db')
-            chk_sec = st.checkbox('외부 비인가 IP 민감 경로 접근 탐지', value='security' in s.active_scenarios, key='chk_sec')
+            chk_sec = st.checkbox('WAF 비인가 IP 민감 경로 접근 탐지', value='security' in s.active_scenarios, key='chk_sec')
             if st.button('선택 시나리오 즉시 적용', type='primary', use_container_width=True, key='apply_scen'):
                 selected = []
                 if chk_cpu:
@@ -340,9 +350,9 @@ def render_metrics():
     snap = s.snapshot
     values = [
         ('서버 CPU 사용률', f"{snap['cpu_pct']:g}%", f"메모리 {snap['memory_pct']:g}% · DB Conn {snap.get('db_conn_pct', 0):g}%", 'cpu', 'error' if snap['cpu_pct'] >= 90 else ''),
-        ('평균 응답 시간', f"{snap['latency_ms']:,}ms", f"초당 처리량 {snap['tps']} TPS", 'clock', 'error' if snap['latency_ms'] >= 2000 else ''),
+        ('AP 평균 응답 시간', f"{snap['latency_ms']:,}ms", f"초당 처리량 {snap['tps']} TPS", 'clock', 'error' if snap['latency_ms'] >= 2000 else ''),
         ('WEB 5xx 오류율', f"{snap['error_pct']:g}%", f"WAS 누적 오류 {snap['was_errors']}건", 'alert', 'error' if snap['error_pct'] >= 5 else ''),
-        ('보안 민감 경로 탐지', f"{snap['sensitive_hits']}건", f"최근 IP {snap['sample_ip']}", 'shield', 'error' if snap['sensitive_hits'] > 0 else '')
+        ('WAF 민감 경로 탐지', f"{snap['sensitive_hits']}건", f"최근 IP {snap['sample_ip']}", 'shield', 'error' if snap['sensitive_hits'] > 0 else '')
     ]
     for col, (label, value, sub, icon, state_cls) in zip(st.columns(4), values):
         with col:
@@ -352,19 +362,19 @@ def render_metrics():
 
 def render_status():
     if s.ai_error:
-        title, sub, cls = 'AI 분석 결과를 확인하지 못했어요', '정상으로 판정하지 않고 기존 상태를 유지합니다.', 'danger'
+        title, sub, cls = '로컬 LLM 분석 결과를 확인하지 못했어요', '정상으로 판정하지 않고 기존 상태를 유지합니다.', 'danger'
     elif s.ai_future:
-        title, sub, cls = 'AI가 인프라·보안 상태를 분석하고 있어요', '최신 관측값과 로그 패턴을 바탕으로 이상 징후를 검토합니다.', ''
+        title, sub, cls = '로컬 LLM이 인프라·WAF·AP 상태를 분석하고 있어요', '최신 관측값과 파라미터·로그 패턴을 바탕으로 이상 징후를 검토합니다.', ''
     elif s.active_id:
         title, sub, cls = '이상 징후를 확인하고 있어요', f'연속 정상 확인 {s.normal_streak}/2 · 담당자 조치와 복구 상태를 확인하세요.', 'danger'
     elif not s.running:
-        title, sub, cls = '모니터링을 시작해 보세요', '상단의 [모니터링 시작] 또는 [이상 상황 테스트] 버튼을 누르면 실시간 관제와 AI 분석이 작동합니다.', 'idle'
+        title, sub, cls = '모니터링을 시작해 보세요', '상단의 [모니터링 시작] 또는 [이상 상황 테스트] 버튼을 누르면 실시간 관제와 로컬 LLM 분석이 작동합니다.', 'idle'
     elif s.assessment:
-        title, sub, cls = '최근 분석에서 정상 범위를 확인했어요', f'지표는 1초마다 갱신 · 다음 AI 분석까지 {max(0, int(s.next_sample - time.monotonic()))}초', 'idle'
+        title, sub, cls = '최근 분석에서 정상 범위를 확인했어요', f'지표는 1초마다 갱신 · 다음 로컬 LLM 분석까지 {max(0, int(s.next_sample - time.monotonic()))}초', 'idle'
     else:
-        title, sub, cls = '최신 데이터를 확인하고 있어요', 'AI 분석을 준비합니다.', 'idle'
+        title, sub, cls = '최신 데이터를 확인하고 있어요', '로컬 LLM 분석을 준비합니다.', 'idle'
     if ai.settings()['provider'] == 'demo':
-        sub += ' (현재 규칙 기반 DEMO 모드)'
+        sub += ' (로컬 LLM 규칙 기반 시뮬레이션 모드)'
     icon = '<span class="spinner"></span>' if s.ai_future else icon_svg('spark', size=26)
     markup(f'<div class="ai-banner {cls}">{icon}<div>{esc(title)}<small>{esc(sub)}</small></div></div>')
     if s.ai_error:
@@ -394,24 +404,24 @@ def render_overview_chart():
         st.altair_chart(chart, use_container_width=True)
         st.caption('최근 관측 추이 · 1초 간격 실시간 갱신 · KST')
     with right, st.container(border=True):
-        markup('<div class="summary-title">' + icon_svg('spark', '#3182f6', 22) + f' AI 상태 요약 · {esc(choice)}</div>')
+        markup('<div class="summary-title">' + icon_svg('spark', '#3182f6', 22) + f' 로컬 AI 상태 요약 · {esc(choice)}</div>')
         snap = s.snapshot
         metric_insights = {
-            '응답 시간': f"현재 평균 응답 지연 {snap['latency_ms']:,}ms ({'임계치 2,000ms 초과 · 병목 의심' if snap['latency_ms'] >= 2000 else '정상 응답 구간 유지'})",
+            '응답 시간': f"현재 AP 평균 응답 지연 {snap['latency_ms']:,}ms ({'임계치 2,000ms 초과 · 병목 의심' if snap['latency_ms'] >= 2000 else '정상 응답 구간 유지'})",
             '서버 사용률': f"핵심 WAS CPU {snap['cpu_pct']:g}% · 메모리 {snap['memory_pct']:g}% ({'자원 포화 경계' if snap['cpu_pct'] >= 90 else '여유 자원 안정'})",
             '오류 비율': f"WEB 5xx 오류율 {snap['error_pct']:g}% · WAS 예외 {snap['was_errors']}건 ({'오류 급증 대응 필요' if snap['error_pct'] >= 5 else '오류율 정상'})",
-            'DB 커넥션': f"Primary DB 커넥션 점유율 {snap.get('db_conn_pct', 0):g}% ({'커넥션 풀 고갈 임박' if snap.get('db_conn_pct', 0) >= 85 else '세션 풀 안정'})",
-            '보안 탐지 건수': f"민감 경로 접근 {snap['sensitive_hits']}건 · 최근 IP {snap['sample_ip']} ({'비인가 접근 차단 확인 필요' if snap['sensitive_hits'] > 0 else '보안 위협 미탐지'})"
+            'DB 커넥션': f"Primary DB 커넥션 파라미터 점유율 {snap.get('db_conn_pct', 0):g}% ({'커넥션 풀 고갈 임박' if snap.get('db_conn_pct', 0) >= 85 else '세션 풀 안정'})",
+            '보안 탐지 건수': f"WAF 민감 경로 접근 {snap['sensitive_hits']}건 · 최근 IP {snap['sample_ip']} ({'비인가 접근 차단 확인 필요' if snap['sensitive_hits'] > 0 else '보안 위협 미탐지'})"
         }
         rows = [metric_insights.get(choice, '')]
         if s.ai_error:
-            rows.append('최근 AI 정밀 분석 실패 · 상태 확인 필요')
+            rows.append('최근 로컬 LLM 정밀 분석 실패 · 상태 확인 필요')
         elif s.assessment:
             rows.append(s.assessment['summary'])
             if s.assessment['actions']:
                 rows.append('확인 제안: ' + s.assessment['actions'][0])
         else:
-            rows.append('상세 AI 분석 대기 중입니다.')
+            rows.append('상세 로컬 LLM 분석 대기 중입니다.')
         for row in rows:
             if row:
                 markup('<div class="summary-row">' + esc(row) + '</div>')
@@ -419,7 +429,7 @@ def render_overview_chart():
             markup('<div class="summary-meta">최근 분석 관측 시각 ' + esc(s.assessed_at[11:19]) + ' KST</div>')
 
     with st.container(border=True):
-        st.markdown('#### 실시간 유입 웹/보안 로그 스트림 (최근 8건)')
+        st.markdown('#### 실시간 유입 웹 · WAF 보안 로그 스트림 (최근 8건)')
         recent_logs = []
         for item in reversed(s.samples[-8:]):
             recent_logs.append({
@@ -427,7 +437,7 @@ def render_overview_chart():
                 '출발지 IP': item['sample_ip'],
                 '요청 경로 (URL)': item['sample_url'],
                 'HTTP 상태': item['http_status'],
-                '보안 탐지': f"탐지 ({item['sensitive_hits']}건)" if item['sensitive_hits'] > 0 else '정상',
+                'WAF 보안 탐지': f"탐지 ({item['sensitive_hits']}건)" if item['sensitive_hits'] > 0 else '정상',
                 '응답 지연': f"{item['latency_ms']}ms"
             })
         st.dataframe(pd.DataFrame(recent_logs), hide_index=True, use_container_width=True)
@@ -439,7 +449,7 @@ def render_overview_chart():
 
 
 def render_infra_management():
-    """인프라 관리 전용 화면: 3개 서버팜(관세행정/유니패스/전자상거래) 총 30대(WEB 4, WAS 4, DB 2) 자원 관리."""
+    """인프라 관리 전용 화면: 관세행정/유니패스/전자상거래 서버팜 자원 관리."""
     nodes = s.snapshot.get('farm_nodes', [])
     if not nodes:
         st.info('서버팜 데이터를 불러오는 중입니다.')
@@ -454,7 +464,7 @@ def render_infra_management():
     avg_mem = round(df['mem_pct'].mean(), 1)
     avg_disk = round(df['disk_pct'].mean(), 1)
 
-    # 1. 전체 30대 인프라 자원 요약 KPI
+    # 1. 전체 인프라 자원 요약 KPI
     kpis = [
         ('전체 관리 호스트', f"{total_cnt}대", f"정상 {ok_cnt} · 주의 {warn_cnt} · 위험 {crit_cnt}", 'server', 'error' if crit_cnt > 0 else ''),
         ('전체 평균 CPU 사용률', f"{avg_cpu}%", f"최고 부하 노드 {df.loc[df['cpu_pct'].idxmax(), 'hostname']}", 'cpu', 'error' if avg_cpu >= 80 else ''),
@@ -467,7 +477,7 @@ def render_infra_management():
             markup(f'<div class="kpi"><div class="kpi-label"><span class="{ic_cls}">{icon_svg(ic, size=22)}</span>{label}</div><div class="kpi-value">{val}</div><div class="kpi-sub">{sub}</div></div>')
 
     # 2. 3대 서버팜별 요약 카드 (관세행정, 유니패스, 전자상거래)
-    st.markdown('### 서버팜별 자원 운영 현황 (각 WEB 4대 · WAS 4대 · DB 2대)')
+    st.markdown('### 서버팜별 자원 운영 현황')
     farm_cols = st.columns(3, gap='medium')
     for col, farm_name in zip(farm_cols, ['관세행정', '유니패스', '전자상거래']):
         fdf = df[df['farm'] == farm_name]
@@ -492,7 +502,7 @@ def render_infra_management():
                     <span class="farm-title">{esc(farm_name)} 서버팜</span>
                     <span class="farm-badge {badge_cls}">{esc(badge_txt)}</span>
                 </div>
-                <div class="farm-spec">구성: WEB 4대 · WAS 4대 · DB 2대 (총 10대)</div>
+                <div class="farm-spec">WEB · WAS · DB 3계층 클러스터 운영</div>
                 <div class="bar-wrap">
                     <div class="bar-label"><span>평균 CPU 사용률</span><span>{f_cpu}%</span></div>
                     <div class="bar-track"><div class="bar-fill {cpu_cls}" style="width:{min(100, f_cpu)}%"></div></div>
@@ -512,17 +522,13 @@ def render_infra_management():
     st.markdown('### 호스트별 상세 자원 모니터링 인벤토리')
     f_col1, f_col2, _ = st.columns([1.2, 1.2, 2.6])
     farm_filter = f_col1.selectbox('서버팜 선택', ['전체 서버팜', '관세행정', '유니패스', '전자상거래'], key='farm_filter_box')
-    tier_filter = f_col2.selectbox('티어(계층) 구분', ['전체 계층', 'WEB (4대/팜)', 'WAS (4대/팜)', 'DB (2대/팜)'], key='tier_filter_box')
+    tier_filter = f_col2.selectbox('티어(계층) 구분', ['전체 계층', 'WEB', 'WAS', 'DB'], key='tier_filter_box')
 
     filtered_df = df.copy()
     if farm_filter != '전체 서버팜':
         filtered_df = filtered_df[filtered_df['farm'] == farm_filter]
-    if tier_filter.startswith('WEB'):
-        filtered_df = filtered_df[filtered_df['tier'] == 'WEB']
-    elif tier_filter.startswith('WAS'):
-        filtered_df = filtered_df[filtered_df['tier'] == 'WAS']
-    elif tier_filter.startswith('DB'):
-        filtered_df = filtered_df[filtered_df['tier'] == 'DB']
+    if tier_filter != '전체 계층':
+        filtered_df = filtered_df[filtered_df['tier'] == tier_filter]
 
     with st.container(border=True):
         disp = filtered_df[['farm', 'tier', 'hostname', 'ip', 'cpu_pct', 'mem_pct', 'disk_pct', 'net_mbps', 'load_avg', 'sessions', 'uptime', 'status']].copy()
@@ -553,7 +559,7 @@ def render_customs_quality():
             ic_cls = f"kpi-icon {st_cls}".strip()
             markup(f'<div class="kpi"><div class="kpi-label"><span class="{ic_cls}">{icon_svg(ic, size=22)}</span>{label}</div><div class="kpi-value">{val}</div><div class="kpi-sub">{sub}</div></div>')
 
-    # 5대 핵심 업무별 상태 카드 (토스 모노톤 + 블루/레드 2색 포인트만 사용)
+    # 5대 핵심 업무별 상태 카드
     st.markdown('### 5대 핵심 관세행정 업무 실시간 품질 현황')
     cards_html = ['<div class="svc-grid">']
     for sv in services:
@@ -612,7 +618,7 @@ def monitor():
         try:
             answer = s.chat_future.result()
         except Exception as exc:
-            answer = str(exc) if isinstance(exc, ai.IntegrationError) else 'AI 응답 처리 실패'
+            answer = str(exc) if isinstance(exc, ai.IntegrationError) else '로컬 LLM 응답 처리 실패'
         s.chat_history.append(('assistant', answer))
         s.chat_future = None
         full_refresh = True
@@ -655,7 +661,7 @@ def monitor():
                     show_popup(*event)
                     full_refresh = True
             except Exception as exc:
-                s.ai_error = str(exc) if isinstance(exc, ai.IntegrationError) else 'AI 분석 처리 오류'
+                s.ai_error = str(exc) if isinstance(exc, ai.IntegrationError) else '로컬 LLM 분석 처리 오류'
                 s.normal_streak = 0
                 if ai.settings()['provider'] == 'chatgpt':
                     s.running = False
@@ -672,7 +678,7 @@ def monitor():
     if full_refresh:
         st.rerun()
 
-    if s.menu == 'AI대시보드':
+    if s.menu == 'AI 대시보드':
         render_metrics()
         render_status()
         render_overview_chart()
@@ -683,17 +689,17 @@ def monitor():
 
 
 heading = {
-    'AI대시보드': 'AI 대시보드 · 통합 관제',
-    '인프라 관리': '인프라 자원 관리 (서버팜 30대)',
+    'AI 대시보드': 'AI 대시보드 · 통합 관제',
+    '인프라 관리': '인프라 자원 관리',
     '관세행정 서비스품질': '관세행정 서비스품질 현황',
     '알림 기록': '알림 및 대응 기록',
     '자동 리포트': '자동 리포트 저장소'
 }
-scen_map = {'cpu_spike': 'CPU 폭주', 'db_error': 'DB/5xx 오류', 'security': '보안 접근'}
+scen_map = {'cpu_spike': 'CPU 폭주', 'db_error': 'DB/5xx 오류', 'security': 'WAF 보안 접근'}
 scen_text = '시나리오: ' + ' + '.join(scen_map[x] for x in s.active_scenarios) if s.active_scenarios else '정상 시나리오'
 markup(f'<div class="head"><h1>{heading.get(s.menu, "AI 대시보드 · 통합 관제")}</h1><div class="badge-group"><span class="badge ai">{esc(ai.provider_label())}</span><span class="badge">{esc(scen_text)}</span></div></div>')
 
-if s.menu in ('AI대시보드', '인프라 관리', '관세행정 서비스품질'):
+if s.menu in ('AI 대시보드', '인프라 관리', '관세행정 서비스품질'):
     render_controls()
 monitor()
 
@@ -703,7 +709,7 @@ if s.active_id and s.menu != '자동 리포트':
             show_popup('alert', s.active_id, flash=False)
             st.rerun()
         with st.form('action_form'):
-            note = st.text_input('수행한 조치 내용', placeholder='예: 유량 제어(Rate Limit) 적용 및 비인가 IP 차단 완료')
+            note = st.text_input('수행한 조치 내용', placeholder='예: 유량 제어(Rate Limit) 적용 및 WAF 비인가 IP 차단 완료')
             if st.form_submit_button('조치 내용·현재 시각 저장'):
                 if note.strip():
                     db.record_action(s.active_id, note)
@@ -774,13 +780,13 @@ if s.chat_open:
     with st.container(key='chat_panel'):
         title, close = st.columns([5, 1])
         with title:
-            markup('<div class="chat-title">AI 운영 도우미</div>')
+            markup('<div class="chat-title">로컬 AI 운영 도우미</div>')
         if close.button('닫기', key='close_chat', help='상담창 닫기'):
             s.chat_open = False
             st.rerun()
         if not s.chat_history:
             markup('<div class="chat-empty"><div class="chat-symbol">' + icon_svg('chat', '#3182f6', 64) + '</div><h3>무엇을 확인할까요?</h3></div>')
-            for question in ['현재 인프라 및 보안 상태 요약', '가장 부하가 높은 서버팜 분석', '현재 상황 권장 대응 절차']:
+            for question in ['현재 인프라 및 WAF 보안 상태 요약', '가장 부하가 높은 서버팜 분석', '현재 상황 권장 대응 절차']:
                 if st.button(question, key='suggest_' + question, use_container_width=True, disabled=s.chat_future is not None):
                     ask(question)
                     st.rerun()
@@ -793,7 +799,7 @@ if s.chat_open:
                     with st.chat_message(role):
                         st.markdown(message)
         if s.chat_future:
-            st.info('AI가 답변을 작성하고 있어요…')
+            st.info('로컬 LLM이 답변을 작성하고 있어요…')
         with st.form('chat_form', clear_on_submit=True):
             question = st.text_area('궁금한 내용을 입력하세요', height=88)
             if st.form_submit_button('보내기', type='primary', use_container_width=True, disabled=s.chat_future is not None) and question.strip():
@@ -862,16 +868,16 @@ def incident_dialog(kind, event_id):
     color = '#f04452' if is_alert else '#03b26c'
     if is_alert:
         if snap.get('sensitive_hits', 0) > 0:
-            title = '보안 민감 경로 접근 탐지'
+            title = 'WAF 보안 민감 경로 접근 탐지'
         elif snap['latency_ms'] >= 2000:
-            title = '응답이 느려졌어요'
+            title = 'AP 응답이 느려졌어요'
         else:
             title = '이상 징후를 발견했어요'
     else:
         title = '정상 상태로 돌아왔어요'
     symbol = icon_svg("alert" if is_alert else "check", color, 54)
-    markup(f'<div class="dialog-symbol" style="color:{color}">{symbol}</div><div class="dialog-heading">{title}</div><div class="dialog-sub">{"AI가 확인한 이상 징후" if is_alert else "연속 2회 정상 확인"}</div>')
-    markup(f'<div class="dialog-metrics"><div><span>응답 시간</span><strong>{snap["latency_ms"]:,}ms</strong></div><div><span>서버 CPU</span><strong>{snap["cpu_pct"]:g}%</strong></div><div><span>보안/5xx</span><strong>{snap["sensitive_hits"]}건 / {snap["error_pct"]:g}%</strong></div></div>')
+    markup(f'<div class="dialog-symbol" style="color:{color}">{symbol}</div><div class="dialog-heading">{title}</div><div class="dialog-sub">{"로컬 LLM이 확인한 이상 징후" if is_alert else "연속 2회 정상 확인"}</div>')
+    markup(f'<div class="dialog-metrics"><div><span>AP 응답 시간</span><strong>{snap["latency_ms"]:,}ms</strong></div><div><span>서버 CPU</span><strong>{snap["cpu_pct"]:g}%</strong></div><div><span>WAF/5xx</span><strong>{snap["sensitive_hits"]}건 / {snap["error_pct"]:g}%</strong></div></div>')
     if is_alert:
         st.write(event['diagnosis']['summary'])
         actions = ''.join('<div>• ' + esc(a) + '</div>' for a in event['diagnosis']['actions'])
