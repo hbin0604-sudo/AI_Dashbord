@@ -306,26 +306,6 @@ def make_snapshot(scenario='normal', tick=0):
         'nodes': nodes,
         'customs_services': customs_services
     }
-    ]
-
-    return {
-        'timestamp': now(),
-        'scenario': scenario,
-        'service': 'WAS-CORE-01',
-        'synthetic': True,
-        'cpu_pct': cpu,
-        'memory_pct': mem,
-        'tps': tps,
-        'error_pct': err,
-        'latency_ms': lat,
-        'db_conn_pct': db_conn,
-        'sensitive_hits': sec_hits,
-        'was_errors': was_err,
-        'sample_ip': ip,
-        'sample_url': url,
-        'http_status': status,
-        'nodes': nodes
-    }
 
 
 def transition(active_id, streak, snapshot, assessment):
