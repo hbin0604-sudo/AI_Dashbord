@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>보안뉴스 IT·보안 속보 — 침해사고 동향 시연</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
+    body {
+      font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+      background-color: #f4f6f9;
+      color: #191f28;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    /* 실제 인터넷 기사 전환 애니메이션 */
+    .article-shell {
+      transition: opacity 0.45s ease, transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .article-enter {
+      opacity: 0;
+      transform: translateY(18px) scale(0.99);
+    }
+    .article-active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    /* 형광펜 밑줄 강조 모션 */
+    .marker-highlight {
+      background: linear-gradient(transparent 45%, #ffe066 45%);
+      font-weight: 800;
+      padding: 0 4px;
+      border-radius: 3px;
+      animation: markerPop 0.7s ease forwards;
+    }
+    .marker-red {
+      background: linear-gradient(transparent 45%, #ffc9c9 45%);
+      color: #c92a2a;
+      font-weight: 800;
+      padding: 0 4px;
+      border-radius: 3px;
+    }
+    .marker-blue {
+      background: linear-gradient(transparent 45%, #d0ebff 45%);
+      color: #1864ab;
+      font-weight: 800;
+      padding: 0 4px;
+      border-radius: 3px;
+    }
+    @keyframes markerPop {
+      0% { background-size: 0% 100%; }
+      100% { background-size: 100% 100%; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+  <!-- 포털 뉴스 상단 헤더 -->
+  <div class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="bg-[#03c75a] text-white font-black text-sm px-2 py-0.5 rounded">N</span>
+        <span class="font-black text-xl tracking-tight text-gray-900">뉴스</span>
+        <span class="text-gray-300">|</span>
+        <span class="text-sm font-bold text-gray-600">IT · 정보보안</span>
+      </div>
+      <div class="flex items-center gap-3 text-xs text-gray-500">
+        <span id="topProgressText" class="font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">기사 1 / 5 자동 브리핑 중</span>
+        <span class="hidden sm:inline">전자통관 AI 관제시스템 · 개발 배경 자료</span>
+      </div>
+    </div>
+    <!-- 카테고리 네비게이션 바 -->
+    <div class="bg-[#1e293b] text-white text-xs">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex items-center justify-between overflow-x-auto gap-6">
+        <div class="flex items-center gap-5 font-semibold whitespace-nowrap">
+          <span class="text-amber-400 font-bold">속보</span>
+          <span>사이버침해</span>
+          <span>개인정보보호</span>
+          <span>AI보안</span>
+          <span>공공·행정망</span>
+          <span>취약점경보</span>
+        </div>
+        <div class="text-[11px] text-slate-300 hidden md:block">
+          실시간 보안 위협 및 침해사고 동향 브리핑
+        </div>
+      </div>
+    </div>
+    <!-- 진행 게이지 바 -->
+    <div class="w-full h-1 bg-gray-100">
+      <div id="progressBar" class="h-full bg-red-600 transition-all duration-100 ease-linear" style="width: 0%;"></div>
+    </div>
+  </div>
+
+  <!-- 메인 인터넷 신문 기사 본문 + 우측 사이드바 -->
+  <main class="max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+    <!-- 좌측 메인 기사 영역 (8컬럼) -->
+    <article id="articleCard" class="lg:col-span-8 bg-white border border-gray-200 rounded-xl p-6 sm:p-8 shadow-sm article-shell article-active">
+      <!-- 언론사 제호 및 기사 바이라인 -->
+      <div class="flex items-center justify-between border-b border-gray-100 pb-4 mb-5">
+        <div class="flex items-center gap-2.5">
+          <span id="pressBadge" class="bg-slate-900 text-white text-xs font-extrabold px-2.5 py-1 rounded">데일리시큐 · 보안뉴스</span>
+          <span id="categoryTag" class="text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded">긴급 침해사고 분석</span>
+        </div>
+        <span id="articleDate" class="text-xs text-gray-400">입력 2026.11.20. 오후 14:10</span>
+      </div>
+
+      <!-- 기사 헤드라인 -->
+      <h1 id="articleHeadline" class="text-2xl sm:text-3xl font-black text-gray-900 leading-snug tracking-tight mb-3">
+        <!-- JS로 채워짐 -->
+      </h1>
+
+      <!-- 부제목 (리드문) -->
+      <p id="articleSubhead" class="text-sm sm:text-base font-semibold text-gray-600 border-l-4 border-gray-800 pl-3.5 py-1 mb-6 leading-relaxed bg-gray-50 rounded-r">
+        <!-- JS로 채워짐 -->
+      </p>
+
+      <!-- 기사 내 인포그래픽 / 현장 요약 카드 -->
+      <div id="articleGraphic" class="mb-6 rounded-xl border border-gray-200 bg-slate-900 text-white p-5">
+        <!-- JS로 채워짐 -->
+      </div>
+
+      <!-- 기사 본문 문단 -->
+      <div id="articleBody" class="space-y-4 text-[15.5px] text-gray-800 leading-relaxed">
+        <!-- JS로 채워짐 -->
+      </div>
+
+      <!-- 기사 하단 핵심 요약 박스 -->
+      <div id="articleTakeaway" class="mt-6 p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-900 font-bold flex items-center gap-2.5">
+        <!-- JS로 채워짐 -->
+      </div>
+    </article>
+
+    <!-- 우측 포털 뉴스 사이드바 (4컬럼) -->
+    <aside class="lg:col-span-4 space-y-5">
+      <!-- 기사 목차 (클릭 시 즉시 이동 가능) -->
+      <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+        <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
+          <h2 class="font-extrabold text-sm text-gray-900">📌 브리핑 주요 기사 목록</h2>
+          <span class="text-[11px] text-gray-400">클릭 시 바로 이동</span>
+        </div>
+        <ul id="sidebarList" class="space-y-2.5">
+          <!-- JS로 채워짐 -->
+        </ul>
+      </div>
+
+      <!-- 보안 경보 현황 위젯 -->
+      <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+        <h3 class="font-extrabold text-sm text-gray-900 mb-3">🚨 사이버 위협 경보 지표</h3>
+        <div class="space-y-2.5 text-xs">
+          <div class="flex justify-between items-center p-2.5 rounded-lg bg-red-50 border border-red-100">
+            <span class="font-bold text-gray-800">웹(PHP/RCE) 취약점 스캐닝</span>
+            <span class="font-extrabold text-red-600">▲ 310% 급증</span>
+          </div>
+          <div class="flex justify-between items-center p-2.5 rounded-lg bg-orange-50 border border-orange-100">
+            <span class="font-bold text-gray-800">AI 위장 자동화 트래픽(Bot)</span>
+            <span class="font-extrabold text-orange-600">▲ 245% 증가</span>
+          </div>
+          <div class="flex justify-between items-center p-2.5 rounded-lg bg-blue-50 border border-blue-100">
+            <span class="font-bold text-gray-800">AI 지능형 통합 관제 대응</span>
+            <span class="font-extrabold text-blue-700">실시간 선제 방어</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- 하단 동영상 녹화 제어 바 -->
+  <footer class="bg-white border-t border-gray-200 py-2.5 px-4 sm:px-6 text-xs text-gray-500">
+    <div class="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-2">
+      <div>🎬 <b>녹화 팁:</b> 전체 화면(F11) 후 자동 재생되는 기사를 배경으로 문제 배경을 설명하세요. (방향키 ← / → 지원)</div>
+      <div class="flex items-center gap-2">
+        <button onclick="prevSlide()" class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded font-bold">◀ 이전 기사</button>
+        <button id="btnPause" onclick="togglePlay()" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold">일시정지</button>
+        <button onclick="nextSlide()" class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded font-bold">다음 기사 ▶</button>
+        <button onclick="restartSlides()" class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded font-semibold">↺ 처음부터</button>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const ARTICLES = [
+      {
+        type: 'danger',
+        press: '보안뉴스 · 긴급취재팀',
+        tag: '웹 취약점 침해사고',
+        date: '입력 2026.11.20. 오전 09:42',
+        headline: '구버전 PHP·웹 파라미터 취약점 노린 원격코드실행(RCE) 공격 기승',
+        subhead: '공격자, 민감 경로(/etc/passwd, .env) 자동 탐색해 관리자 권한 탈취… 단순 방화벽 차단 한계 드러나',
+        graphicTitle: '[탐지 로그 샘플] 비인가 외부 IP의 웹 서버 민감 경로 연속 탐색 흔적',
+        graphicCode: `211.234.110.55 - "GET /csp/cgi-bin/download.do?file=../../../../etc/passwd" 403\n211.234.110.55 - "GET /clip/admin/config/.env" 403\n211.234.110.55 - "POST /rip/api/userInfo.do?id=1' OR '1'='1" 403`,
+        paragraphs: [
+          '최근 국내외 공공·민간 웹 시스템을 대상으로 <span class="marker-highlight">PHP 및 웹 애플리케이션의 입력값 검증 취약점을 악용한 원격 코드 실행(RCE) 공격</span>이 급증하고 있다.',
+          '공격자들은 자동화된 스캐닝 도구를 이용해 수초 만에 수백 개의 민감 경로와 설정 파일(.env) 접근을 시도하며, 정상 이용자 요청과 섞여 유입되기 때문에 <span class="marker-red">기존 정적 보안 장비만으로는 초기 침투 징후를 즉각 식별하기 어렵다</span>는 지적이 나온다.'
+        ],
+        takeaway: '⚠️ 핵심 시사점: 웹·AP 파라미터 이상 접근과 보안 로그를 실시간으로 연관 분석하는 지능형 탐지 체계가 필수적입니다.'
+      },
+      {
+        type: 'danger',
+        press: '디지털데일리 · 정보보호부',
+        tag: '개인정보 대량 유출',
+        date: '입력 2026.11.20. 오전 11:15',
+        headline: 'API 인증 우회·과다 조회로 수백만 건 개인정보 유출 사고 잇따라',
+        subhead: '정상 업무 트래픽으로 위장한 대규모 데이터 수집 봇… 사후 인지까지 평균 수일 소요',
+        graphicTitle: '[침해사고 유형 분석] 최근 대규모 개인정보 유출 주요 원인 비중',
+        graphicCode: `① API 비정상 대량 조회 및 인증 우회 (46.2%)  ██████████████░░░░░░\n② 웹 애플리케이션 파라미터 변조·삽입 (31.8%)  ██████████░░░░░░░░░░\n③ 서버 설정 오류 및 관리 페이지 노출 (22.0%)  ███████░░░░░░░░░░░░░`,
+        paragraphs: [
+          '대국민 민원·행정 서비스와 연계된 웹 API를 겨냥해 <span class="marker-highlight">정상적인 조회 요청으로 위장한 뒤 수백만 건의 개인정보와 거래 내역을 탈취</span>하는 침해사고가 연이어 발생하고 있다.',
+          '특히 공격 트래픽이 업무 집중 시간대에 유입될 경우 일반 사용자 증가와 구분하기 어려워, <span class="marker-red">데이터 유출이 상당 부분 진행된 뒤에야 뒤늦게 이상을 인지</span>하는 사례가 반복되고 있다.'
+        ],
+        takeaway: '⚠️ 핵심 시사점: 서비스별 처리 건수·응답 패턴의 급격한 변동을 실시간 감시해 비정상 조회를 조기에 차단해야 합니다.'
+      },
+      {
+        type: 'danger',
+        press: '전자신문 · 사이버보안센터',
+        tag: 'AI 악용 트래픽 폭주',
+        date: '입력 2026.11.20. 오후 13:05',
+        headline: '“AI 봇 동원해 초당 수천 건 업무 요청 폭주”… 서비스 마비 노린 지능형 공격',
+        subhead: 'CPU·DB 커넥션 순식간에 고갈시켜 핵심 행정서비스 연쇄 지연 유발',
+        graphicTitle: '[부하 전이 경로] AI 자동화 트래픽 폭주 시 시스템 연쇄 장애 과정',
+        graphicCode: `[AI 봇 대량 요청 유입] ──▶ [WAS 스레드 풀 98% 포화] ──▶ [DB 커넥션 고갈] ──▶ [수입신고·통관 응답 2,700ms 이상 지연]`,
+        paragraphs: [
+          '생성형 AI를 악용해 인간과 유사한 패턴으로 <span class="marker-highlight">대규모 자동화 트래픽을 유발하고 서버 자원을 고갈시키는 지능형 서비스 거부 공격</span>이 새로운 위협으로 부상했다.',
+          '특정 업무 페이지에 집중 요청이 몰리면 서버 CPU와 DB 커넥션이 순식간에 임계치를 초과하며, <span class="marker-red">수입신고·화물통관 등 핵심 대국민 서비스 전체의 응답 지연과 마비</span>로 이어질 위험이 크다.'
+        ],
+        takeaway: '⚠️ 핵심 시사점: 서버 자원(CPU·DB)과 행정서비스 응답속도를 단일 화면에서 동시에 추적해야 병목을 즉시 해소할 수 있습니다.'
+      },
+      {
+        type: 'danger',
+        press: 'IT조선 · 공공인프라팀',
+        tag: '기존 관제 현장의 한계',
+        date: '입력 2026.11.20. 오후 14:30',
+        headline: '“서버·보안·서비스 화면 따로따로”… 수동 관제로는 초동 대응 골든타임 놓쳐',
+        subhead: '30대 서버 터미널과 보안 로그 일일이 교차 확인… 장애 분석·보고서 작성에 건당 40분 이상 소모',
+        graphicTitle: '[기존 수동 관제 병목] 장애 발생 시 담당자 수동 처리 소요 시간 비교',
+        graphicCode: `• 30대 서버 및 보안·서비스 화면 개별 접속 및 육안 확인 : 약 15분\n• 복합 장애 원인 추적 및 조치 가이드 검토             : 약 15분\n• 장애 경위 및 복구 결과 보고서 수기 작성·이력 등록   : 약 15분 (총 40분+ 소요)`,
+        paragraphs: [
+          '현재 다수의 운영 현장에서는 <span class="marker-highlight">인프라 자원, 보안 위협 로그, 업무별 서비스 품질을 각각 별도의 화면과 터미널 창에서 수동으로 확인</span>하고 있다.',
+          '이로 인해 복합 장애가 발생하면 담당자가 여러 창을 오가며 원인을 파악하고 사후 보고서를 작성하는 데 <span class="marker-red">건당 40분 이상의 시간이 소요되어 초동 대응의 골든타임을 놓치기 쉽다</span>는 한계가 있다.'
+        ],
+        takeaway: '⚠️ 핵심 시사점: 분산된 관제 지표를 하나로 통합하고, AI가 원인 분석과 보고서 작성까지 자동화하는 도구가 필요합니다.'
+      },
+      {
+        type: 'solution',
+        press: '전자통관 AI 관제시스템',
+        tag: 'AI 기반 능동 방어 해법',
+        date: '솔루션 도입 · 실무 혁신',
+        headline: '“AI의 위협은 AI로 막는다” — 전자통관 지능형 통합 관제시스템 구축',
+        subhead: '30대 서버·보안 로그·5대 행정서비스 실시간 통합 감시부터 AI 진단·GitLab 자동 보고서까지 원스톱 구현',
+        graphicTitle: '[해결 아키텍처] 탐지 → AI 원인 진단 → 복구 검증 → 자동 보고서 전 주기 자동화',
+        graphicCode: `[1초 단위 통합 관제] ──▶ [AI 실시간 이상 진단 & 가이드] ──▶ [정상 복구 확인] ──▶ [AI 보고서 자동 생성 & GitLab 저장]`,
+        paragraphs: [
+          '고도화되는 AI 침해사고와 트래픽 폭주에 맞서, <span class="marker-blue">역으로 AI가 인프라·보안·서비스 품질 데이터를 실시간 입체 분석해 이상 징후를 선제 탐지하는 통합 관제시스템</span>을 직접 개발했다.',
+          '별도 예산 투입 없이 구축된 이 도구는 <span class="marker-highlight">현황 파악 시간을 70% 단축하고, AI 자동 진단과 보고서 생성을 통해 사후 보고 시간을 80% 절감</span>하며 실무 관제 역량을 획기적으로 높였다.'
+        ],
+        takeaway: '✅ 지금부터 실제 「전자통관 AI 관제시스템」의 실시간 작동 화면을 시연해 드리겠습니다.'
+      }
+    ];
+
+    let currentIndex = 0;
+    let isPlaying = true;
+    let progress = 0;
+    const SLIDE_DURATION_MS = 4500;
+    const TICK_MS = 50;
+
+    function renderSidebar() {
+      const list = document.getElementById('sidebarList');
+      list.innerHTML = ARTICLES.map((art, idx) => {
+        const active = idx === currentIndex;
+        const isSol = art.type === 'solution';
+        return `
+          <li onclick="goToSlide(${idx})"
+              class="p-2.5 rounded-lg cursor-pointer transition border ${active
+                ? (isSol ? 'bg-blue-50 border-blue-300' : 'bg-red-50 border-red-300')
+                : 'bg-gray-50/70 border-transparent hover:bg-gray-100'}">
+            <div class="flex items-center gap-1.5 mb-1">
+              <span class="text-[10px] font-black px-1.5 py-0.5 rounded ${active
+                ? (isSol ? 'bg-blue-600 text-white' : 'bg-red-600 text-white')
+                : 'bg-gray-200 text-gray-600'}">0${idx + 1}</span>
+              <span class="text-[11px] font-bold ${isSol ? 'text-blue-700' : 'text-red-600'}">${art.tag}</span>
+            </div>
+            <div class="text-xs font-bold text-gray-800 line-clamp-2 leading-snug">${art.headline}</div>
+          </li>
+        `;
+      }).join('');
+    }
+
+    function renderArticle() {
+      const art = ARTICLES[currentIndex];
+      const isSol = art.type === 'solution';
+      const card = document.getElementById('articleCard');
+
+      card.classList.remove('article-active');
+      card.classList.add('article-enter');
+
+      setTimeout(() => {
+        document.getElementById('pressBadge').textContent = art.press;
+        document.getElementById('pressBadge').className = isSol
+          ? 'bg-blue-600 text-white text-xs font-extrabold px-2.5 py-1 rounded'
+          : 'bg-slate-900 text-white text-xs font-extrabold px-2.5 py-1 rounded';
+
+        const tagEl = document.getElementById('categoryTag');
+        tagEl.textContent = art.tag;
+        tagEl.className = isSol
+          ? 'text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded'
+          : 'text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded';
+
+        document.getElementById('articleDate').textContent = art.date;
+        document.getElementById('articleHeadline').textContent = art.headline;
+        document.getElementById('articleSubhead').textContent = art.subhead;
+        document.getElementById('articleSubhead').className = isSol
+          ? 'text-sm sm:text-base font-semibold text-blue-950 border-l-4 border-blue-600 pl-3.5 py-1.5 mb-6 leading-relaxed bg-blue-50/60 rounded-r'
+          : 'text-sm sm:text-base font-semibold text-gray-700 border-l-4 border-red-600 pl-3.5 py-1.5 mb-6 leading-relaxed bg-gray-50 rounded-r';
+
+        document.getElementById('articleGraphic').innerHTML = `
+          <div class="text-[11px] font-bold ${isSol ? 'text-blue-300' : 'text-amber-300'} mb-2">${art.graphicTitle}</div>
+          <pre class="text-xs font-mono text-slate-100 whitespace-pre-wrap leading-relaxed overflow-x-auto">${art.graphicCode}</pre>
+        `;
+
+        document.getElementById('articleBody').innerHTML = art.paragraphs.map(p => `<p>${p}</p>`).join('');
+
+        const takeEl = document.getElementById('articleTakeaway');
+        takeEl.textContent = art.takeaway;
+        takeEl.className = isSol
+          ? 'mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-900 font-bold'
+          : 'mt-6 p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-900 font-bold';
+
+        document.getElementById('topProgressText').textContent = `기사 ${currentIndex + 1} / ${ARTICLES.length} 브리핑 중`;
+        document.getElementById('progressBar').style.backgroundColor = isSol ? '#2563eb' : '#dc2626';
+
+        renderSidebar();
+        card.classList.remove('article-enter');
+        card.classList.add('article-active');
+      }, 120);
+    }
+
+    function goToSlide(idx) {
+      currentIndex = idx;
+      progress = 0;
+      renderArticle();
+    }
+
+    function nextSlide() {
+      if (currentIndex < ARTICLES.length - 1) {
+        currentIndex++;
+        progress = 0;
+        renderArticle();
+      } else {
+        isPlaying = false;
+        progress = 100;
+        document.getElementById('progressBar').style.width = '100%';
+        document.getElementById('btnPause').textContent = '재생';
+      }
+    }
+
+    function prevSlide() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        progress = 0;
+        renderArticle();
+      }
+    }
+
+    function restartSlides() {
+      currentIndex = 0;
+      progress = 0;
+      isPlaying = true;
+      document.getElementById('btnPause').textContent = '일시정지';
+      renderArticle();
+    }
+
+    function togglePlay() {
+      if (currentIndex === ARTICLES.length - 1 && !isPlaying) {
+        restartSlides();
+        return;
+      }
+      isPlaying = !isPlaying;
+      document.getElementById('btnPause').textContent = isPlaying ? '일시정지' : '재생';
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+      if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+    });
+
+    renderArticle();
+
+    setInterval(() => {
+      if (!isPlaying) return;
+      progress += (TICK_MS / SLIDE_DURATION_MS) * 100;
+      if (progress >= 100) {
+        nextSlide();
+      } else {
+        document.getElementById('progressBar').style.width = `${progress}%`;
+      }
+    }, TICK_MS);
+  </script>
+</body>
+</html>
